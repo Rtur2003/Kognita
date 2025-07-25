@@ -1,0 +1,8 @@
+{
+    "settings": {
+        "idle_threshold_seconds": 180
+    },
+    "app_state": {
+        "first_run": false
+    }
+}
