@@ -1,16 +1,18 @@
 # Python
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-.Python
-env/
 venv/
+env/
 
-# Database
+# Database File
 *.db
 *.sqlite
 *.sqlite3
+
+# PyInstaller
+/dist/
+/build/
+*.spec
 
 # IDE-specific
 .idea/
