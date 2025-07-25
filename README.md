@@ -18,7 +18,7 @@ Kognita is a silent, local-first desktop activity tracker that helps you underst
 
 1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/KULLANICI_ADINIZ/Kognita.git](https://github.com/KULLANICI_ADINIZ/Kognita.git)
+    git clone [https://github.com/Rtur2003/Kognita.git](https://github.com/Rtur2003/Kognita.git)
     cd Kognita
     ```
 
