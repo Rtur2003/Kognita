@@ -3,6 +3,8 @@ import sqlite3
 import os
 import logging
 from pathlib import Path
+import csv
+import datetime
 
 # Proje kök dizinini belirle ve veritabanı dosyasını orada oluştur.
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -74,6 +76,15 @@ def initialize_database():
                     time_limit_minutes INTEGER NOT NULL,
                     UNIQUE(category, goal_type)
                 )""")
+            # YENİ: Achievements table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS achievements (
+                    achievement_id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    description TEXT NOT NULL,
+                    icon_path TEXT,
+                    unlocked_at INTEGER NOT NULL
+                )""")
             conn.commit()
 
             if is_new_db:
@@ -89,7 +100,6 @@ def get_all_categories():
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT DISTINCT category FROM app_categories ORDER BY category")
-        # Dönüşü [(Office,), (Web,)] gibi bir tuple listesi olacağından düzelt
         return [item[0] for item in cursor.fetchall()]
 
 def get_uncategorized_apps():
@@ -140,3 +150,55 @@ def delete_goal(goal_id):
         conn.commit()
         logging.info(f"Goal with ID {goal_id} deleted.")
 
+# --- Achievement Management (YENİ) ---
+def get_unlocked_achievement_ids():
+    """Returns a set of unlocked achievement IDs."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT achievement_id FROM achievements")
+        return {item[0] for item in cursor.fetchall()}
+
+def unlock_achievement(ach_id, name, description, icon_path):
+    """Unlocks an achievement and saves it to the database."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        timestamp = int(datetime.datetime.now().timestamp())
+        cursor.execute(
+            "INSERT OR IGNORE INTO achievements (achievement_id, name, description, icon_path, unlocked_at) VALUES (?, ?, ?, ?, ?)",
+            (ach_id, name, description, icon_path, timestamp)
+        )
+        conn.commit()
+
+def get_all_unlocked_achievements():
+    """Fetches all details of unlocked achievements."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT name, description, icon_path, unlocked_at FROM achievements ORDER BY unlocked_at DESC")
+        return cursor.fetchall()
+
+# --- Data Export (YENİ) ---
+def export_all_data_to_csv(file_path):
+    """Exports the entire usage_log table to a CSV file."""
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, process_name, window_title, start_time, end_time, duration_seconds FROM usage_log")
+            rows = cursor.fetchall()
+            headers = [description[0] for description in cursor.description]
+            
+            # Zaman damgalarını okunabilir formata çevir
+            def format_timestamp(ts):
+                return datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+
+            with open(file_path, 'w', newline='', encoding='utf-8-sig') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(headers)
+                for row in rows:
+                    row_list = list(row)
+                    row_list[3] = format_timestamp(row_list[3]) # start_time
+                    row_list[4] = format_timestamp(row_list[4]) # end_time
+                    writer.writerow(row_list)
+        return True, None
+    except Exception as e:
+        logging.error(f"CSV dışa aktarma hatası: {e}")
+        return False, str(e)

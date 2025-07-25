@@ -1,14 +1,17 @@
 # kognita/ui.py
 
 import tkinter as tk
-from tkinter import ttk, messagebox, Listbox, StringVar, Frame, Label, Entry, Button
+from tkinter import ttk, messagebox, Listbox, StringVar, Frame, Label, Entry, Button, filedialog
 import datetime
 import os
 import sys
 from PIL import Image, ImageTk
+import logging
 
 # Yerel modülleri içe aktar
 from . import analyzer, database, reporter
+from .achievement_checker import ACHIEVEMENTS
+from .utils import resource_path
 
 # Matplotlib import'larını try-except bloğuna alarak opsiyonel hale getirelim
 try:
@@ -18,52 +21,51 @@ try:
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
 
-# --- Stil ve Tasarım Yapılandırması ---
+# --- STİL YAPILANDIRMASI ---
 STYLE_CONFIG = {
     "font_normal": ("Segoe UI", 10),
-    "font_bold": ("Segoe UI Semibold", 11),
-    "font_title": ("Segoe UI Light", 18),
-    "header_bg": "#2c3e50",  # Koyu Mavi-Gri
-    "header_fg": "#ecf0f1",  # Açık Gri
-    "bg_color": "#ffffff",   # Beyaz
-    "footer_bg": "#f8f9fa",  # Çok Açık Gri
-    "accent_color": "#3498db", # Parlak Mavi
-    "danger_color": "#e74c3c", # Kırmızı
-    "success_color": "#2ecc71", # Yeşil
+    "font_bold": ("Segoe UI", 11, "bold"),
+    "font_title": ("Segoe UI Light", 22),
+    "font_header": ("Segoe UI Semibold", 12),
+    "header_bg": "#2c3e50",
+    "header_fg": "#ecf0f1",
+    "bg_color": "#FDFEFE",
+    "footer_bg": "#F4F6F7",
+    "accent_color": "#3498db",
+    "danger_color": "#e74c3c",
+    "success_color": "#2ecc71",
+    "text_color": "#34495e",
+    "border_color": "#bdc3c7",
 }
-
-def resource_path(relative_path):
-    """ PyInstaller ile paketlendiğinde varlık dosyalarına doğru yolu bulur. """
-    try:
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    return os.path.join(base_path, 'assets', relative_path)
-
 
 class BaseWindow(tk.Toplevel):
     """Tüm pencereler için temel şablonu (header, main, footer) oluşturan sınıf."""
     def __init__(self, master, title, geometry):
         super().__init__(master)
-        self.overrideredirect(True) # Pencerenin başlık çubuğunu kaldır
+        self.overrideredirect(True)
         self.geometry(geometry)
         self.configure(bg=STYLE_CONFIG["bg_color"])
         
-        # Sürükleme için değişkenler
+        self.border_frame = Frame(self, bg=STYLE_CONFIG["border_color"], relief='solid', bd=1)
+        self.border_frame.pack(fill='both', expand=True, padx=1, pady=1)
+
         self._drag_start_x = 0
         self._drag_start_y = 0
-
-        # --- Ana Yerleşim Alanları ---
-        self.header_frame = Frame(self, bg=STYLE_CONFIG["header_bg"], height=50) # Yüksekliği biraz azalttık
-        self.main_frame = Frame(self, bg=STYLE_CONFIG["bg_color"], padx=15, pady=15)
-        self.footer_frame = Frame(self, bg=STYLE_CONFIG["footer_bg"], height=55)
         
-        self.header_frame.pack(fill='x', side='top')
-        self.main_frame.pack(fill='both', expand=True)
-        self.footer_frame.pack(fill='x', side='bottom')
-        self.footer_frame.pack_propagate(False)
+        # --- DEĞİŞTİ: .pack() yerine .grid() kullanarak daha stabil bir yerleşim sağlıyoruz ---
+        self.border_frame.grid_rowconfigure(1, weight=1) # Ana çerçevenin genişlemesini sağla
+        self.border_frame.grid_columnconfigure(0, weight=1)
 
-        # Sürükleme olaylarını başlık çubuğuna bağla
+        self.header_frame = Frame(self.border_frame, bg=STYLE_CONFIG["header_bg"], height=50)
+        self.main_frame = Frame(self.border_frame, bg=STYLE_CONFIG["bg_color"], padx=20, pady=20)
+        self.footer_frame = Frame(self.border_frame, bg=STYLE_CONFIG["footer_bg"], height=55)
+        
+        self.header_frame.grid(row=0, column=0, sticky="ew")
+        self.main_frame.grid(row=1, column=0, sticky="nsew")
+        self.footer_frame.grid(row=2, column=0, sticky="ew")
+        
+        self.footer_frame.pack_propagate(False) # Footer'ın boyutunun sabit kalmasını sağla
+
         self.header_frame.bind("<ButtonPress-1>", self.start_drag)
         self.header_frame.bind("<B1-Motion>", self.do_drag)
 
@@ -71,8 +73,7 @@ class BaseWindow(tk.Toplevel):
 
         self.lift()
         self.attributes('-topmost', True)
-        self.focus_force()
-        self.attributes('-topmost', False)
+        self.after(100, lambda: self.attributes('-topmost', False))
         self.center_window()
         self.protocol("WM_DELETE_WINDOW", self.destroy)
 
@@ -86,38 +87,154 @@ class BaseWindow(tk.Toplevel):
         self.geometry(f"+{x}+{y}")
 
     def populate_header(self, title):
-        """Varsayılan başlık bölümünü logo, başlık ve özel kapatma düğmesi ile doldurur."""
-        # Kapatma düğmesi
         close_button = Button(self.header_frame, text="✕", command=self.destroy, bg=STYLE_CONFIG["header_bg"], fg=STYLE_CONFIG["header_fg"], relief='flat', font=("Segoe UI Symbol", 12), activebackground=STYLE_CONFIG['danger_color'], activeforeground='white')
         close_button.pack(side='right', padx=10, pady=5, fill='y')
 
         try:
-            logo_image = Image.open(resource_path("logo.png")).resize((30, 30), Image.Resampling.LANCZOS)
+            logo_image = Image.open(resource_path("logo.png")).resize((28, 28), Image.Resampling.LANCZOS)
             self.logo_photo = ImageTk.PhotoImage(logo_image)
             logo_label = Label(self.header_frame, image=self.logo_photo, bg=STYLE_CONFIG["header_bg"])
             logo_label.pack(side='left', padx=(15,10), pady=10)
-            logo_label.bind("<ButtonPress-1>", self.start_drag) # Logoya tıklayarak da sürükle
+            logo_label.bind("<ButtonPress-1>", self.start_drag)
             logo_label.bind("<B1-Motion>", self.do_drag)
         except Exception:
             pass
 
-        title_label = Label(self.header_frame, text=title, font=STYLE_CONFIG["font_title"], bg=STYLE_CONFIG["header_bg"], fg=STYLE_CONFIG["header_fg"])
+        title_label = Label(self.header_frame, text=title, font=STYLE_CONFIG["font_header"], bg=STYLE_CONFIG["header_bg"], fg=STYLE_CONFIG["header_fg"])
         title_label.pack(side='left', pady=10)
-        title_label.bind("<ButtonPress-1>", self.start_drag) # Başlığa tıklayarak da sürükle
+        title_label.bind("<ButtonPress-1>", self.start_drag)
         title_label.bind("<B1-Motion>", self.do_drag)
         
     def center_window(self):
         self.update_idletasks()
-        width = int(self.geometry().split('x')[0])
-        height = int(self.geometry().split('x')[1].split('+')[0])
-        x = (self.winfo_screenwidth() // 2) - (width // 2)
-        y = (self.winfo_screenheight() // 2) - (height // 2)
-        self.geometry(f'{width}x{height}+{x}+{y}')
+        try:
+            width = int(self.geometry().split('x')[0])
+            height = int(self.geometry().split('x')[1].split('+')[0])
+            screen_width = self.winfo_screenwidth()
+            screen_height = self.winfo_screenheight()
+            x = (screen_width // 2) - (width // 2)
+            y = (screen_height // 2) - (height // 2)
+            self.geometry(f'{width}x{height}+{x}+{y-30}')
+        except (ValueError, IndexError):
+            pass
+
+
+class WelcomeWindow(BaseWindow):
+    """Uygulama ilk kez çalıştığında gösterilen çok adımlı karşılama sihirbazı."""
+    def __init__(self, master, on_close_callback):
+        super().__init__(master, "Kognita'ya Hoş Geldiniz", "600x520") # Pencereyi biraz büyüttük
+        self.on_close_callback = on_close_callback
+        self.current_step = 0
+        self.steps = [self.create_step1, self.create_step2, self.create_step3]
+        
+        self.populate_footer()
+        self.show_step()
+
+    def clear_main_frame(self):
+        for widget in self.main_frame.winfo_children():
+            widget.destroy()
+
+    def show_step(self):
+        self.clear_main_frame()
+        self.steps[self.current_step]()
+        self.update_footer_buttons()
+
+    def next_step(self):
+        if self.current_step < len(self.steps) - 1:
+            self.current_step += 1
+            self.show_step()
+
+    def prev_step(self):
+        if self.current_step > 0:
+            self.current_step -= 1
+            self.show_step()
+    
+    def finish(self):
+        self.on_close_callback()
+        self.destroy()
+
+    def populate_footer(self):
+        self.prev_button = Button(self.footer_frame, text="< Geri", command=self.prev_step, relief='flat', font=STYLE_CONFIG['font_normal'])
+        self.prev_button.pack(side='left', padx=20, pady=10)
+        
+        self.next_button = Button(self.footer_frame, text="İleri >", command=self.next_step, relief='flat', font=STYLE_CONFIG['font_bold'], bg=STYLE_CONFIG['accent_color'], fg='white')
+        self.next_button.pack(side='right', padx=20, pady=10, ipadx=10)
+
+    def update_footer_buttons(self):
+        self.prev_button.config(state='normal' if self.current_step > 0 else 'disabled')
+        if self.current_step == len(self.steps) - 1:
+            self.next_button.config(text="Anladım, Başla!", command=self.finish, bg=STYLE_CONFIG['success_color'])
+        else:
+            self.next_button.config(text="İleri >", command=self.next_step, bg=STYLE_CONFIG['accent_color'])
+
+    def create_step1(self):
+        """Adım 1: Karşılama ve ana görsel."""
+        Label(self.main_frame, text="Dijital Alışkanlıklarınızı Keşfedin", font=STYLE_CONFIG['font_title'], bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['text_color']).pack(pady=(10, 20))
+        
+        # --- YENİ: Fotoğrafı orantılı küçülten ve ortalayan mantık ---
+        try:
+            # Fotoğraf için bir çerçeve oluştur, bu ortalamayı kolaylaştırır
+            image_container = Frame(self.main_frame, bg=STYLE_CONFIG['bg_color'])
+            image_container.pack(pady=20, expand=True)
+
+            # Maksimum genişlik ve yükseklik belirle
+            max_width = 400
+            max_height = 300
+
+            original_image = Image.open(resource_path("welcome_illustration.png"))
+            original_width, original_height = original_image.size
+
+            # En boy oranını koruyarak yeni boyutu hesapla
+            ratio = min(max_width / original_width, max_height / original_height)
+            new_width = int(original_width * ratio)
+            new_height = int(original_height * ratio)
+
+            resized_image = original_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            
+            self.welcome_photo = ImageTk.PhotoImage(resized_image)
+            Label(image_container, image=self.welcome_photo, bg=STYLE_CONFIG['bg_color']).pack()
+            
+        except Exception as e:
+            Label(self.main_frame, text="Kognita, bilgisayar kullanımınızı anlamanıza\nve hedefler belirlemenize yardımcı olur.",
+                  font=STYLE_CONFIG['font_normal'], bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['text_color']).pack(pady=20)
+            logging.warning(f"Hoşgeldin ekranı görseli yüklenemedi: {e}")
+
+    def create_step2(self):
+        """Adım 2: Nasıl Çalışır."""
+        Label(self.main_frame, text="Nasıl Çalışır?", font=STYLE_CONFIG['font_title'], bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['text_color']).pack(pady=(10, 25))
+        
+        info_texts = [
+            ("Sessiz Takip", "Arka planda hangi uygulamada ne kadar kaldığınızı kaydeder."),
+            ("Otomatik Analiz", "Verilerinizi 'İş', 'Oyun', 'Tasarım' gibi kategorilere ayırır."),
+            ("Kolay Erişim", "Tüm rapor ve ayarlara sistem tepsisi (sağ alt köşe) ikonundan ulaşabilirsiniz.")
+        ]
+        
+        for title, desc in info_texts:
+            line_frame = Frame(self.main_frame, bg=STYLE_CONFIG['bg_color'])
+            line_frame.pack(fill='x', pady=8, padx=40, anchor='w')
+            Label(line_frame, text=f"✓  {title}:", font=STYLE_CONFIG['font_bold'], bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['accent_color']).pack(side='left', anchor='n')
+            Label(line_frame, text=desc, font=STYLE_CONFIG['font_normal'], wraplength=400, justify='left', bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['text_color']).pack(side='left', padx=10, anchor='w')
+
+    def create_step3(self):
+        """Adım 3: Gizlilik Güvencesi."""
+        Label(self.main_frame, text="Gizliliğiniz Önceliğimizdir", font=STYLE_CONFIG['font_title'], bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['text_color']).pack(pady=(10, 25))
+
+        try:
+            img = Image.open(resource_path("privacy_icon.png")).resize((80, 80), Image.Resampling.LANCZOS)
+            self.privacy_photo = ImageTk.PhotoImage(img)
+            Label(self.main_frame, image=self.privacy_photo, bg=STYLE_CONFIG['bg_color']).pack(pady=10)
+        except Exception:
+             pass
+
+        privacy_text = ("• Tüm verileriniz **sadece sizin bilgisayarınızda** saklanır.\n""• Kognita, hiçbir veriyi internete göndermez veya paylaşmaz.\n""• Sadece uygulama isimlerini ve pencere başlıklarını kaydeder,\n  tuş vuruşlarını veya ekran görüntülerini **asla kaydetmez**.")
+        
+        Label(self.main_frame, text=privacy_text, font=STYLE_CONFIG['font_normal'], justify='left', bg='#F4F6F7', fg=STYLE_CONFIG['text_color'], relief='solid', bd=1, bordercolor=STYLE_CONFIG['border_color'], padx=20, pady=15).pack(pady=20, padx=20, fill='x')
 
 class ReportWindow(BaseWindow):
     def __init__(self, master):
         super().__init__(master, "Aktivite Raporu", "850x700")
-        
+        self.achievement_icons = {} 
+
         if not MATPLOTLIB_AVAILABLE:
             messagebox.showerror("Eksik Kütüphane", "Raporları görüntülemek için 'matplotlib' kütüphanesi gereklidir.")
             self.destroy()
@@ -131,18 +248,22 @@ class ReportWindow(BaseWindow):
         self.tab_overview = ttk.Frame(self.notebook)
         self.tab_hourly = ttk.Frame(self.notebook)
         self.tab_weekly = ttk.Frame(self.notebook)
+        self.tab_achievements = ttk.Frame(self.notebook)
 
-        self.notebook.add(self.tab_overview, text=' Genel Bakış ')
-        self.notebook.add(self.tab_hourly, text=' Saatlik Aktivite ')
-        self.notebook.add(self.tab_weekly, text=' Haftalık Karşılaştırma ')
+        self.notebook.add(self.tab_overview, text='📊 Genel Bakış')
+        self.notebook.add(self.tab_hourly, text='🕒 Saatlik Aktivite')
+        self.notebook.add(self.tab_weekly, text='📅 Haftalık Karşılaştırma')
+        self.notebook.add(self.tab_achievements, text='🏆 Başarımlar')
         
         Button(self.footer_frame, text="Kapat", command=self.destroy, bg=STYLE_CONFIG['danger_color'], fg='white', font=STYLE_CONFIG['font_bold'], width=10, relief='flat').pack(side='right', padx=15, pady=10)
         
         self.refresh_report()
+        self.create_achievements_tab()
 
     def setup_custom_header(self):
-        for widget in self.header_frame.winfo_children(): widget.destroy()
-        self.populate_header("Aktivite Raporu")
+        for widget in self.header_frame.winfo_children():
+            if isinstance(widget, Frame):
+                widget.destroy()
         
         dropdown_frame = Frame(self.header_frame, bg=STYLE_CONFIG["header_bg"])
         dropdown_frame.pack(side='right', padx=20)
@@ -151,10 +272,11 @@ class ReportWindow(BaseWindow):
         self.time_range_var = StringVar(self)
         time_options = ["Son 24 Saat", "Son 7 Gün", "Son 30 Gün"]
         self.time_range_var.set(time_options[1])
-        time_menu = ttk.OptionMenu(dropdown_frame, self.time_range_var, time_options[1], *time_options, command=self.refresh_report)
+        s = ttk.Style()
+        s.configure('Header.TMenubutton', font=STYLE_CONFIG['font_normal'])
+        time_menu = ttk.OptionMenu(dropdown_frame, self.time_range_var, time_options[1], *time_options, command=self.refresh_report, style='Header.TMenubutton')
         time_menu.pack(side='left')
 
-        # Dropdown menüye de sürükleme bağlayalım
         dropdown_frame.bind("<ButtonPress-1>", self.start_drag)
         dropdown_frame.bind("<B1-Motion>", self.do_drag)
         for child in dropdown_frame.winfo_children():
@@ -164,7 +286,12 @@ class ReportWindow(BaseWindow):
     def get_date_range(self):
         selection = self.time_range_var.get()
         today = datetime.datetime.now()
-        days = 1 if "24 Saat" in selection else 7 if "7 Gün" in selection else 30
+        if "24 Saat" in selection:
+            days = 1
+        elif "7 Gün" in selection:
+            days = 7
+        else:
+            days = 30
         return today - datetime.timedelta(days=days), today
 
     def clear_frame(self, frame):
@@ -177,7 +304,7 @@ class ReportWindow(BaseWindow):
         category_totals, total_duration = analyzer.get_analysis_data(start_date, end_date)
         if not category_totals or total_duration == 0:
             for tab in [self.tab_overview, self.tab_hourly, self.tab_weekly]:
-                Label(tab, text="\nBu tarih aralığı için yeterli veri bulunamadı.", font=STYLE_CONFIG["font_bold"]).pack(pady=20, expand=True)
+                Label(tab, text="\nBu tarih aralığı için yeterli veri bulunamadı.", font=STYLE_CONFIG["font_bold"], bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['text_color']).pack(pady=20, expand=True)
         else:
             self.create_overview_tab(category_totals, total_duration)
             self.create_hourly_tab()
@@ -189,24 +316,29 @@ class ReportWindow(BaseWindow):
         
         fig = Figure(figsize=(5, 4), dpi=100); fig.patch.set_facecolor(STYLE_CONFIG['bg_color'])
         ax = fig.add_subplot(111); ax.set_facecolor(STYLE_CONFIG['bg_color'])
-        wedges, texts, autotexts = ax.pie(category_totals.values(), autopct='%1.1f%%', shadow=False, startangle=90, pctdistance=0.85)
+        wedges, texts, autotexts = ax.pie(category_totals.values(), autopct='%1.1f%%', shadow=False, startangle=140, pctdistance=0.85, wedgeprops=dict(width=0.4, edgecolor='w'))
+        for autotext in autotexts:
+            autotext.set_color('white')
+            autotext.set_fontweight('bold')
         ax.axis('equal')
-        ax.legend(wedges, category_totals.keys(), title="Kategoriler", loc="center left", bbox_to_anchor=(1, 0, 0.5, 1))
         fig.tight_layout()
         FigureCanvasTkAgg(fig, master=left_frame).get_tk_widget().pack(fill='both', expand=True)
 
         report_frame = Frame(right_frame, bg=STYLE_CONFIG['bg_color']); report_frame.pack(fill='both', expand=True)
         persona_text, table_data = reporter.get_report_data(category_totals, total_duration)
 
-        Label(report_frame, text=persona_text, font=STYLE_CONFIG['font_bold'], justify='left', bg=STYLE_CONFIG['bg_color']).pack(pady=(0,10), anchor='w')
+        Label(report_frame, text=persona_text, font=STYLE_CONFIG['font_bold'], justify='left', bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['text_color']).pack(pady=(0,15), anchor='w')
 
         style = ttk.Style()
-        style.configure("Treeview", font=STYLE_CONFIG['font_normal'], rowheight=25)
+        style.configure("Treeview", font=STYLE_CONFIG['font_normal'], rowheight=28, background=STYLE_CONFIG['bg_color'], fieldbackground=STYLE_CONFIG['bg_color'], foreground=STYLE_CONFIG['text_color'])
         style.configure("Treeview.Heading", font=STYLE_CONFIG['font_bold'])
+        style.map('Treeview', background=[('selected', STYLE_CONFIG['accent_color'])])
+        
         tree = ttk.Treeview(report_frame, columns=('Category', 'Time', 'Percentage'), show='headings')
         tree.heading('Category', text='Kategori')
         tree.heading('Time', text='Harcanan Süre')
         tree.heading('Percentage', text='Yüzde (%)')
+        tree.column('Percentage', anchor='center')
         for item in table_data: tree.insert('', 'end', values=item)
         tree.pack(fill='both', expand=True)
 
@@ -236,32 +368,95 @@ class ReportWindow(BaseWindow):
         ax.legend()
         fig.tight_layout()
         FigureCanvasTkAgg(fig, master=self.tab_weekly).get_tk_widget().pack(fill='both', expand=True)
+    
+    def create_achievements_tab(self):
+        self.clear_frame(self.tab_achievements)
+        
+        canvas = tk.Canvas(self.tab_achievements, bg=STYLE_CONFIG['bg_color'], highlightthickness=0)
+        scrollbar = ttk.Scrollbar(self.tab_achievements, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True, padx=5, pady=5)
+        scrollbar.pack(side="right", fill="y")
+        
+        unlocked_achievements = {row[0]: row for row in database.get_all_unlocked_achievements()}
+        
+        for ach_id, details in ACHIEVEMENTS.items():
+            name, desc, icon_file, _, _ = details
+            
+            is_unlocked = name in unlocked_achievements
+            
+            card = Frame(scrollable_frame, bg=STYLE_CONFIG['bg_color'], relief='solid', bd=1, borderwidth=1, highlightbackground=STYLE_CONFIG['border_color'])
+            card.pack(fill='x', padx=20, pady=8, ipady=10)
+            
+            icon_label = Label(card, bg=STYLE_CONFIG['bg_color'])
+            icon_label.pack(side='left', padx=(15, 20), pady=10)
+            
+            text_frame = Frame(card, bg=STYLE_CONFIG['bg_color'])
+            text_frame.pack(side='left', fill='x', expand=True)
+
+            try:
+                img = Image.open(resource_path(icon_file)).resize((64, 64), Image.Resampling.LANCZOS)
+                if not is_unlocked:
+                    img = img.convert('LA').convert('RGBA')
+                
+                self.achievement_icons[ach_id] = ImageTk.PhotoImage(img)
+                icon_label.config(image=self.achievement_icons[ach_id])
+            except Exception as e:
+                icon_label.config(text="🏆", font=("Segoe UI Symbol", 24))
+                logging.warning(f"Başarım ikonu yüklenemedi '{icon_file}': {e}")
+            
+            name_label = Label(text_frame, text=name, font=STYLE_CONFIG['font_bold'], bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['text_color'])
+            name_label.pack(anchor='w')
+            
+            desc_label = Label(text_frame, text=desc, font=STYLE_CONFIG['font_normal'], bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['text_color'], wraplength=550, justify='left')
+            desc_label.pack(anchor='w')
+            
+            if is_unlocked:
+                unlocked_date = datetime.datetime.fromtimestamp(unlocked_achievements[name][3]).strftime('%d.%m.%Y')
+                date_label = Label(text_frame, text=f"Kazanıldı: {unlocked_date}", font=("Segoe UI", 8), bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['success_color'])
+                date_label.pack(anchor='w', pady=(5,0))
+            else:
+                name_label.config(fg='grey')
+                desc_label.config(fg='grey')
 
 class GoalsWindow(BaseWindow):
     def __init__(self, master):
         super().__init__(master, "Hedefleri Yönet", "450x480")
         self.resizable(False, False)
 
-        Label(self.main_frame, text="Mevcut Hedefler:", font=STYLE_CONFIG["font_bold"], bg=STYLE_CONFIG['bg_color']).pack(pady=(0,5), anchor='w')
-        self.goals_listbox = Listbox(self.main_frame, height=8, font=STYLE_CONFIG['font_normal']); self.goals_listbox.pack(fill="x", expand=True)
+        Label(self.main_frame, text="Mevcut Hedefler:", font=STYLE_CONFIG["font_bold"], bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['text_color']).pack(pady=(0,5), anchor='w')
+        self.goals_listbox = Listbox(self.main_frame, height=8, font=STYLE_CONFIG['font_normal'], bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['text_color'], selectbackground=STYLE_CONFIG['accent_color']); self.goals_listbox.pack(fill="x", expand=True)
         Button(self.main_frame, text="Seçili Hedefi Sil", command=self.delete_selected_goal, bg=STYLE_CONFIG["danger_color"], fg='white', relief='flat').pack(pady=5, anchor='e')
         
         ttk.Separator(self.main_frame, orient='horizontal').pack(fill='x', pady=15)
 
-        Label(self.main_frame, text="Yeni Hedef Ekle:", font=STYLE_CONFIG["font_bold"], bg=STYLE_CONFIG['bg_color']).pack(pady=(10,5), anchor='w')
+        Label(self.main_frame, text="Yeni Hedef Ekle:", font=STYLE_CONFIG["font_bold"], bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['text_color']).pack(pady=(10,5), anchor='w')
         add_frame = Frame(self.main_frame, bg=STYLE_CONFIG["bg_color"]); add_frame.pack(fill='x')
         
-        Label(add_frame, text="Kategori:", bg=STYLE_CONFIG["bg_color"]).grid(row=0, column=0, sticky="w", pady=2)
+        Label(add_frame, text="Kategori:", bg=STYLE_CONFIG["bg_color"], fg=STYLE_CONFIG['text_color']).grid(row=0, column=0, sticky="w", pady=2)
         self.category_var = StringVar(self)
         categories = database.get_all_categories()
+        if "Other" in categories:
+            categories.remove("Other")
+            categories.append("Other")
+        
         self.category_var.set(categories[0] if categories else "Other")
         ttk.OptionMenu(add_frame, self.category_var, categories[0] if categories else "Diğer", *categories).grid(row=0, column=1, sticky="ew", padx=5)
 
-        Label(add_frame, text="Tip:", bg=STYLE_CONFIG["bg_color"]).grid(row=1, column=0, sticky="w", pady=2)
+        Label(add_frame, text="Tip:", bg=STYLE_CONFIG["bg_color"], fg=STYLE_CONFIG['text_color']).grid(row=1, column=0, sticky="w", pady=2)
         self.type_var = StringVar(self); self.type_var.set("Max")
         ttk.OptionMenu(add_frame, self.type_var, "Max", "Max", "Min").grid(row=1, column=1, sticky="ew", padx=5)
         
-        Label(add_frame, text="Süre (dakika):", bg=STYLE_CONFIG["bg_color"]).grid(row=2, column=0, sticky="w", pady=2)
+        Label(add_frame, text="Süre (dakika):", bg=STYLE_CONFIG["bg_color"], fg=STYLE_CONFIG['text_color']).grid(row=2, column=0, sticky="w", pady=2)
         self.time_entry = Entry(add_frame, width=10); self.time_entry.grid(row=2, column=1, sticky="w", padx=5)
         add_frame.grid_columnconfigure(1, weight=1)
 
@@ -273,7 +468,8 @@ class GoalsWindow(BaseWindow):
     def refresh_goals_list(self):
         self.goals_listbox.delete(0, tk.END)
         for goal_id, category, goal_type, time_limit in database.get_goals():
-            self.goals_listbox.insert(tk.END, f"[{goal_id}] {category}: {goal_type.capitalize()} {time_limit} dakika/gün")
+            type_tr = "En Fazla" if goal_type == "max" else "En Az"
+            self.goals_listbox.insert(tk.END, f"[{goal_id}] {category}: {type_tr} {time_limit} dakika/gün")
 
     def add_new_goal(self):
         try:
@@ -288,35 +484,66 @@ class GoalsWindow(BaseWindow):
         else:
             try:
                 goal_id = int(selected.split(']')[0][1:])
-                if messagebox.askyesno("Onay", f"'{selected}' hedefini silmek istediğinizden emin misiniz?"):
+                if messagebox.askyesno("Onay", f"'{selected.split('] ')[1]}' hedefini silmek istediğinizden emin misiniz?"):
                     database.delete_goal(goal_id)
                     self.refresh_goals_list()
             except Exception as e: messagebox.showerror("Hata", f"Hedef silinemedi: {e}")
 
 class SettingsWindow(BaseWindow):
     def __init__(self, master, app_instance):
-        super().__init__(master, "Ayarlar", "380x280")
+        super().__init__(master, "Ayarlar", "400x350")
         self.app = app_instance
 
-        Label(self.main_frame, text="Boşta Kalma Eşiği (saniye):", font=STYLE_CONFIG["font_normal"], bg=STYLE_CONFIG['bg_color']).pack(pady=(10,2), anchor='w')
-        self.idle_entry = Entry(self.main_frame, width=15, font=STYLE_CONFIG['font_normal'])
-        self.idle_entry.insert(0, self.app.config['settings']['idle_threshold_seconds'])
-        self.idle_entry.pack(pady=5, anchor='w')
+        main_padding_frame = Frame(self.main_frame, bg=STYLE_CONFIG['bg_color'])
+        main_padding_frame.pack(expand=True, fill='both')
 
-        ttk.Separator(self.main_frame, orient='horizontal').pack(fill='x', pady=15)
+        Label(main_padding_frame, text="Boşta Kalma Eşiği", font=STYLE_CONFIG["font_bold"], bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['text_color']).pack(pady=(10,2), anchor='w')
+        Label(main_padding_frame, text="Bu süreden sonraki aktiviteleriniz kaydedilmez.", font=STYLE_CONFIG["font_normal"], bg=STYLE_CONFIG['bg_color']).pack(pady=(0,5), anchor='w')
         
-        Button(self.main_frame, text="Uygulama Kategorilerini Yönet", command=lambda: AppManagerWindow(self), relief='flat', bg='#f0f0f0', highlightthickness=1, highlightbackground=STYLE_CONFIG['accent_color']).pack(pady=10, fill='x', ipady=5)
+        current_idle_seconds = self.app.config_manager.get('settings', {}).get('idle_threshold_seconds', 180)
+        self.idle_entry = Entry(main_padding_frame, width=15, font=STYLE_CONFIG['font_normal'])
+        self.idle_entry.insert(0, current_idle_seconds)
+        self.idle_entry.pack(pady=5, anchor='w', ipady=2)
+
+        ttk.Separator(main_padding_frame, orient='horizontal').pack(fill='x', pady=15)
         
+        Button(main_padding_frame, text="Uygulama Kategorilerini Yönet", command=lambda: AppManagerWindow(self), relief='flat', bg='#f0f0f0', highlightthickness=1, highlightbackground=STYLE_CONFIG['accent_color']).pack(pady=10, fill='x', ipady=5)
+        
+        Button(main_padding_frame, text="Verileri Dışa Aktar (CSV)", command=self.export_data_action, relief='flat', bg='#f0f0f0', highlightthickness=1, highlightbackground=STYLE_CONFIG['accent_color']).pack(pady=10, fill='x', ipady=5)
+
         Button(self.footer_frame, text="Kapat", command=self.destroy, width=10, relief='flat').pack(side='right', padx=15, pady=10)
         Button(self.footer_frame, text="Kaydet", command=self.save_settings_action, bg=STYLE_CONFIG["accent_color"], fg='white', relief='flat').pack(side='right')
+
+    def export_data_action(self):
+        """Verileri CSV olarak dışa aktarmak için dosya diyalogunu açar."""
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            filetypes=[("CSV Dosyaları", "*.csv"), ("Tüm Dosyalar", "*.*")],
+            title="Kognita Veri Raporunu Kaydet",
+            initialfile=f"kognita_raporu_{datetime.datetime.now().strftime('%Y-%m-%d')}.csv"
+        )
+        if not file_path:
+            return
+
+        success, error_message = database.export_all_data_to_csv(file_path)
+
+        if success:
+            messagebox.showinfo("Başarılı", f"Tüm veriler başarıyla '{os.path.basename(file_path)}' dosyasına aktarıldı.")
+        else:
+            messagebox.showerror("Hata", f"Veriler dışa aktarılamadı:\n{error_message}")
+
 
     def save_settings_action(self):
         try:
             new_idle_time = int(self.idle_entry.get())
-            self.app.config['settings']['idle_threshold_seconds'] = new_idle_time
-            self.app.save_config()
-            self.app.tracker_instance.update_settings(self.app.config)
-            messagebox.showinfo("Başarılı", "Ayarlar kaydedildi.")
+            if new_idle_time < 30:
+                messagebox.showwarning("Geçersiz Değer", "Boşta kalma eşiği en az 30 saniye olmalıdır.")
+                return
+
+            self.app.config_manager.set('settings.idle_threshold_seconds', new_idle_time)
+            self.app.tracker_instance.update_settings(self.app.config_manager.get('settings'))
+            
+            messagebox.showinfo("Başarılı", "Ayarlar kaydedildi. Değişiklikler anında geçerli olacaktır.")
             self.destroy()
         except ValueError:
             messagebox.showerror("Hata", "Lütfen saniye için geçerli bir sayı girin.")
@@ -334,9 +561,14 @@ class AppManagerWindow(BaseWindow):
         self.selected_app_label = Label(action_frame, text="Uygulama seçin:", bg=STYLE_CONFIG["bg_color"]); self.selected_app_label.grid(row=0, column=0, padx=5, sticky='w')
         self.category_var = StringVar(self)
         categories = database.get_all_categories()
-        if categories:
-            self.category_var.set(categories[0])
-            self.category_menu = ttk.OptionMenu(action_frame, self.category_var, categories[0], *categories)
+        if "Other" in categories:
+            categories.remove("Other")
+        
+        custom_categories = ["Yeni Kategori Oluştur..."] + categories
+
+        if custom_categories:
+            self.category_var.set(custom_categories[0])
+            self.category_menu = ttk.OptionMenu(action_frame, self.category_var, custom_categories[0], *custom_categories, command=self.handle_new_category)
             self.category_menu.grid(row=0, column=1, padx=5, sticky='ew')
         action_frame.grid_columnconfigure(1, weight=1)
 
@@ -349,7 +581,7 @@ class AppManagerWindow(BaseWindow):
         self.app_listbox.delete(0, tk.END)
         apps = database.get_uncategorized_apps()
         if not apps:
-            self.app_listbox.insert(tk.END, "Tüm uygulamalar kategorize edilmiş.")
+            self.app_listbox.insert(tk.END, "Tüm uygulamalar kategorize edilmiş. Harika!")
             self.app_listbox.config(state=tk.DISABLED)
         else:
             self.app_listbox.config(state=tk.NORMAL)
@@ -359,12 +591,37 @@ class AppManagerWindow(BaseWindow):
         try: self.selected_app_label.config(text=f"Seçili: {self.app_listbox.get(self.app_listbox.curselection())}")
         except tk.TclError: pass
 
+    def handle_new_category(self, selection):
+        if selection == "Yeni Kategori Oluştur...":
+            from tkinter.simpledialog import askstring
+            new_cat = askstring("Yeni Kategori", "Yeni kategori adını girin:", parent=self)
+            if new_cat:
+                categories = database.get_all_categories()
+                if "Other" in categories: categories.remove("Other")
+                if new_cat not in categories:
+                    categories.append(new_cat)
+                    categories.sort()
+
+                custom_categories = ["Yeni Kategori Oluştur..."] + categories
+                
+                self.category_menu.destroy()
+                self.category_var.set(new_cat)
+                self.category_menu = ttk.OptionMenu(self.category_menu.master, self.category_var, new_cat, *custom_categories, command=self.handle_new_category)
+                self.category_menu.grid(row=0, column=1, padx=5, sticky='ew')
+
     def assign_category(self):
         try:
             selected_app = self.app_listbox.get(tk.ACTIVE)
-            if not selected_app or self.app_listbox.cget('state') == tk.DISABLED: return messagebox.showwarning("Seçim Yok", "Lütfen bir uygulama seçin.")
-            database.update_app_category(selected_app, self.category_var.get())
-            messagebox.showinfo("Başarılı", f"'{selected_app}' uygulaması '{self.category_var.get()}' kategorisine atandı.")
+            selected_category = self.category_var.get()
+
+            if not selected_app or self.app_listbox.cget('state') == tk.DISABLED: 
+                return messagebox.showwarning("Seçim Yok", "Lütfen bir uygulama seçin.")
+            
+            if selected_category == "Yeni Kategori Oluştur...":
+                return messagebox.showwarning("Kategori Seçimi", "Lütfen geçerli bir kategori seçin veya oluşturun.")
+
+            database.update_app_category(selected_app, selected_category)
+            messagebox.showinfo("Başarılı", f"'{selected_app}' uygulaması '{selected_category}' kategorisine atandı.")
             self.refresh_app_list()
             self.selected_app_label.config(text="Uygulama seçin:")
         except Exception as e: messagebox.showerror("Hata", f"Kategori atanamadı: {e}")

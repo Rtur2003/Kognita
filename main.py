@@ -1,175 +1,157 @@
 # main.py
 
+import datetime
 import pystray
 from PIL import Image
-from threading import Thread
+from threading import Thread, Event
 import tkinter as tk
-from tkinter import messagebox
 import sys
-import os
-import json
 import logging
 from plyer import notification
-from datetime import datetime, time
+import time
 
-# Yerel modülleri içe aktar
-from kognita.tracker import Tracker
-from kognita import database, analyzer, ui
+# kognita modüllerini içe aktar
+from kognita import tracker, database, analyzer, ui
+from kognita.config_manager import ConfigManager
+from kognita import achievement_checker
+from kognita.utils import resource_path # DEĞİŞTİ
 
-CONFIG_FILE = "config.json"
-
-def resource_path(relative_path):
-    """ PyInstaller tarafından oluşturulan geçici dizindeki dosyalara erişim sağlar. """
-    try:
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
-    return os.path.join(base_path, relative_path)
-
-def setup_logging():
-    """Uygulama genelinde kullanılacak merkezi logging yapılandırması."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(module)s - %(message)s',
-        handlers=[
-            logging.FileHandler("kognita_app.log"),
-            logging.StreamHandler(sys.stdout)
-        ]
-    )
-    logging.info("Application starting...")
-
-class App:
+class KognitaApp:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.withdraw()
+        self.root.withdraw() # Ana Tkinter penceresini gizle
 
-        self.config = self.load_config()
-        self.tracker_instance = Tracker(self.config)
-        self.background_threads = []
+        self.setup_logging()
+        self.config_manager = ConfigManager()
+        
+        # Olayları (Events) başlat
+        self.stop_event = Event()
+
+        # Modül örneklerini oluştur
+        self.tracker_instance = tracker.ActivityTracker(self.config_manager.get('settings'), self.stop_event)
         self.icon = None
 
-    def load_config(self):
-        """Yapılandırmayı config.json'dan yükler, yoksa oluşturur."""
-        if not os.path.exists(CONFIG_FILE):
-            logging.warning(f"{CONFIG_FILE} not found, creating a default one.")
-            default_config = {"settings": {"idle_threshold_seconds": 180}, "app_state": {"first_run": True}}
-            self.save_config(default_config)
-            return default_config
-        try:
-            with open(CONFIG_FILE, 'r') as f:
-                return json.load(f)
-        except json.JSONDecodeError:
-            logging.error(f"Error decoding {CONFIG_FILE}. Reverting to default.")
-            return {"settings": {"idle_threshold_seconds": 180}, "app_state": {"first_run": True}}
+    def setup_logging(self):
+        """Uygulama genelinde merkezi loglama sistemini kurar."""
+        log_format = '%(asctime)s - %(levelname)s - %(module)s - %(message)s'
+        logging.basicConfig(level=logging.INFO, format=log_format, stream=sys.stdout)
 
-    def save_config(self, config_data=None):
-        """Yapılandırmayı config.json'a kaydeder."""
-        if config_data is None:
-            config_data = self.config
-        with open(CONFIG_FILE, 'w') as f:
-            json.dump(config_data, f, indent=4)
-        logging.info("Configuration saved.")
+    def start_background_threads(self):
+        """Arka plan iş parçacıklarını başlatır."""
+        Thread(target=self.tracker_instance.start_tracking, daemon=True).start()
+        Thread(target=self.goal_checker_loop, daemon=True).start()
+        Thread(target=self.achievement_checker_loop, daemon=True).start()
+        logging.info("Arka plan iş parçacıkları (Tracker, Goal Checker, Achievement Checker) başlatıldı.")
+
+    def achievement_checker_loop(self):
+        """Periyodik olarak başarımları kontrol eder."""
+        # Uygulama açıldıktan kısa bir süre sonra ilk kontrolü yap
+        self.stop_event.wait(60) 
+        while not self.stop_event.is_set():
+            logging.info("Başarım kontrolü yapılıyor...")
+            try:
+                achievement_checker.check_all_achievements()
+            except Exception as e:
+                logging.error(f"Başarım kontrol döngüsünde beklenmedik hata: {e}")
+            # Başarım kontrolünü çok sık yapmaya gerek yok, saatte bir yeterli.
+            self.stop_event.wait(3600) 
 
     def goal_checker_loop(self):
-        """Hedefleri periyodik olarak kontrol eden ve bildirim gönderen döngü."""
+        """Periyodik olarak hedefleri kontrol eder ve bildirim gönderir."""
         checked_goals_today = set()
-        while not self.tracker_instance.stop_flag.is_set():
-            now = datetime.now()
-            if now.time() >= time(0, 0) and now.time() <= time(0, 15):
+        while not self.stop_event.is_set():
+            now = time.localtime()
+            # Her gün başında kontrol edilen hedefleri sıfırla
+            if now.tm_hour == 0 and now.tm_min < 15:
                 checked_goals_today.clear()
+
             goals = database.get_goals()
             if not goals:
-                self.tracker_instance.stop_flag.wait(1800)
+                self.stop_event.wait(1800) # Hedef yoksa 30 dakika bekle
                 continue
-            start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
-            category_totals, _ = analyzer.get_analysis_data(start_of_day, now)
+
+            start_of_day = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            category_totals, _ = analyzer.get_analysis_data(start_of_day, datetime.datetime.now())
+
             for goal_id, category, goal_type, time_limit_min in goals:
                 if goal_id in checked_goals_today:
                     continue
+                
                 usage_minutes = category_totals.get(category, 0) / 60
                 notification_sent = False
-                message = ""
-                if goal_type == 'max' and usage_minutes > time_limit_min:
-                    message = f"'{category}' için günlük limitinizi ({time_limit_min} dk) aştınız."
-                    notification_sent = True
-                elif goal_type == 'min' and usage_minutes >= time_limit_min:
-                    message = f"Tebrikler! '{category}' için günlük hedefinize ({time_limit_min} dk) ulaştınız."
-                    notification_sent = True
+                
+                try:
+                    icon_path = resource_path('icon.ico') # DEĞİŞTİ
+                    if goal_type == 'max' and usage_minutes > time_limit_min:
+                        notification.notify(title='Kognita - Hedef Aşıldı!', message=f"'{category}' için günlük {time_limit_min} dk limitinizi aştınız.", app_name='Kognita', app_icon=icon_path, timeout=10)
+                        notification_sent = True
+                    elif goal_type == 'min' and usage_minutes >= time_limit_min:
+                        notification.notify(title='Kognita - Hedef Tamamlandı!', message=f"Tebrikler! '{category}' için günlük {time_limit_min} dk hedefinize ulaştınız.", app_name='Kognita', app_icon=icon_path, timeout=10)
+                        notification_sent = True
+                except Exception as e:
+                    logging.error(f"Bildirim gönderilemedi: {e}")
+
                 if notification_sent:
-                    logging.info(f"Sending goal notification: {message}")
-                    notification.notify(
-                        title='Kognita - Hedef Durumu',
-                        message=message,
-                        app_name='Kognita',
-                        app_icon=resource_path('icon.ico') if 'icon.ico' in os.listdir() else None,
-                        timeout=15
-                    )
                     checked_goals_today.add(goal_id)
-            self.tracker_instance.stop_flag.wait(900)
-
-    def run_background_threads(self):
-        """Arka plan iş parçacıklarını başlatır ve listeye ekler."""
-        tracker_thread = Thread(target=self.tracker_instance.start_tracking, daemon=True)
-        goal_checker_thread = Thread(target=self.goal_checker_loop, daemon=True)
-        self.background_threads.extend([tracker_thread, goal_checker_thread])
-        for t in self.background_threads:
-            t.start()
-        logging.info("Background threads (Tracker, Goal Checker) started.")
-
-    def exit_action(self, icon=None, item=None):
-        """Uygulamadan temiz bir çıkış için hazırlık yapar."""
-        logging.info("Exit action initiated by user.")
-        self.tracker_instance.stop_flag.set()
-        if self.icon:
-            self.icon.stop()
-        self.root.quit()
-
-    def run(self):
-        """Uygulamayı başlatır ve sistem tepsisi ikonunu çalıştırır."""
-        database.initialize_database()
-        self.run_background_threads()
-
-        try:
-            image = Image.open(resource_path("icon.png"))
-        except FileNotFoundError:
-            logging.error("icon.png not found!")
-            messagebox.showerror("Hata", "Gerekli icon.png dosyası bulunamadı. Uygulama sonlandırılıyor.")
-            self.exit_action()
-            return
             
-        menu = (
+            self.stop_event.wait(900) # 15 dakikada bir kontrol et
+
+    def setup_tray_icon(self):
+        """Sistem tepsisi ikonunu ve menüsünü ayarlar."""
+        try:
+            image = Image.open(resource_path("icon.png")) # DEĞİŞTİ
+        except FileNotFoundError:
+            logging.error("'assets/icon.png' bulunamadı! İkon görüntülenemeyecek.")
+            image = None
+        
+        menu = pystray.Menu(
             pystray.MenuItem('Raporu Göster', lambda: ui.ReportWindow(master=self.root), default=True),
             pystray.MenuItem('Hedefleri Yönet', lambda: ui.GoalsWindow(master=self.root)),
             pystray.MenuItem('Ayarlar', lambda: ui.SettingsWindow(master=self.root, app_instance=self)),
+            pystray.Menu.SEPARATOR,
             pystray.MenuItem('Çıkış', self.exit_action)
         )
         self.icon = pystray.Icon("Kognita", image, "Kognita Aktivite Takipçisi", menu)
+        return self.icon
 
-        # pystray'i kendi thread'inde çalıştır
-        pystray_thread = Thread(target=self.icon.run, daemon=True)
-        pystray_thread.start()
+    def run_tray_icon(self):
+        """Sistem tepsisi ikonunu ayrı bir thread'de çalıştırır."""
+        self.icon.run()
 
-        if self.config.get('app_state', {}).get('first_run', True):
-            def show_welcome():
-                logging.info("First run, showing welcome notification.")
-                self.icon.notify("Kognita'ya hoş geldiniz!", "Aktiviteleriniz artık arka planda sessizce takip ediliyor.")
-                self.config['app_state']['first_run'] = False
-                self.save_config()
-            self.root.after(2000, show_welcome) # 2 saniye sonra göster
+    def exit_action(self):
+        """Uygulamadan çıkış işlemlerini yönetir."""
+        logging.info("Çıkış işlemi başlatıldı...")
+        self.stop_event.set() # Tüm döngülere durma sinyali gönder
+        if self.icon:
+            self.icon.stop()
+        self.root.quit() # Tkinter ana döngüsünü sonlandır
 
-        # Tkinter'in ana döngüsünü başlat. Bu, programın ana thread'i olacak.
-        self.root.mainloop()
+    def on_welcome_closed(self):
+        """'first_run' bayrağını günceller ve yapılandırmayı kaydeder."""
+        logging.info("İlk kullanım tamamlandı olarak işaretleniyor.")
+        self.config_manager.set('app_state.first_run', False)
+        self.root.quit()
 
-        # mainloop sonlandığında (exit_action'da root.quit() çağrılınca), temiz çıkış yap
-        logging.info("Tkinter mainloop finished. Cleaning up.")
-        # Arka plan thread'lerinin sonlanmasını bekle (opsiyonel ama iyi bir pratik)
-        for t in self.background_threads:
-            if t.is_alive():
-                t.join(timeout=1) # 1 saniye bekle
-        logging.info("Application exited gracefully.")
+    def run(self):
+        """Uygulamanın ana döngüsünü başlatır ve yönetir."""
+        logging.info("Uygulama başlatılıyor...")
+        database.initialize_database()
 
+        if self.config_manager.get('app_state', {}).get('first_run', True):
+            ui.WelcomeWindow(master=self.root, on_close_callback=self.on_welcome_closed)
+            self.root.mainloop()
+
+        if not self.stop_event.is_set():
+            self.start_background_threads()
+            icon = self.setup_tray_icon()
+            
+            tray_thread = Thread(target=self.run_tray_icon, daemon=True)
+            tray_thread.start()
+
+            self.root.mainloop()
+        
+        logging.info("Uygulama sonlandırıldı.")
 
 if __name__ == "__main__":
-    setup_logging()
-    app = App()
+    app = KognitaApp()
     app.run()
