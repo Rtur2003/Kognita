@@ -242,3 +242,161 @@ AttributeError: module 'kognita.reporter' has no attribute 'get_report_data'
 2025-07-26 00:17:48,215 - INFO - main - Exit action initiated by user.
 2025-07-26 00:17:48,215 - INFO - tracker - Stopping Kognita Tracker...
 2025-07-26 00:17:48,217 - INFO - tracker - Tracker thread stopped gracefully.
+2025-07-26 00:18:03,776 - INFO - main - Application starting...
+2025-07-26 00:18:03,824 - INFO - tracker - Tracker settings updated: Idle threshold set to 180s
+2025-07-26 00:18:03,827 - INFO - main - Background threads (Tracker, Goal Checker) started.
+2025-07-26 00:18:03,854 - INFO - tracker - Activity listeners started.
+2025-07-26 00:18:03,854 - INFO - tracker - Kognita Tracker is now active.
+2025-07-26 00:18:06,498 - ERROR - _win32 - An error occurred when calling message handler
+Traceback (most recent call last):
+  File "C:\Users\MONSTER\AppData\Local\Programs\Python\Python313\Lib\site-packages\pystray\_win32.py", line 412, in _dispatcher
+    return int(icon._message_handlers.get(
+               ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        uMsg, lambda w, l: 0)(wParam, lParam) or 0)
+        ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "C:\Users\MONSTER\AppData\Local\Programs\Python\Python313\Lib\site-packages\pystray\_win32.py", line 201, in _on_notify
+    self()
+    ~~~~^^
+  File "C:\Users\MONSTER\AppData\Local\Programs\Python\Python313\Lib\site-packages\pystray\_base.py", line 110, in __call__
+    self._menu(self)
+    ~~~~~~~~~~^^^^^^
+  File "C:\Users\MONSTER\AppData\Local\Programs\Python\Python313\Lib\site-packages\pystray\_base.py", line 632, in __call__
+    return next(
+           ~~~~~
+        menuitem
+        ~~~~~~~~
+        for menuitem in self.items
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~
+        if menuitem.default)(icon)
+        ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\MONSTER\AppData\Local\Programs\Python\Python313\Lib\site-packages\pystray\_base.py", line 453, in __call__
+    return self._action(icon, self)
+           ~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\Users\MONSTER\AppData\Local\Programs\Python\Python313\Lib\site-packages\pystray\_base.py", line 548, in wrapper0
+    return action()
+  File "c:\Users\MONSTER\Desktop\Kognita\main.py", line 141, in <lambda>
+    pystray.MenuItem('Raporu Göster', lambda: ui.ReportWindow(master=self.root), default=True),
+                                              ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "c:\Users\MONSTER\Desktop\Kognita\kognita\ui.py", line 141, in __init__
+    self.refresh_report()
+    ~~~~~~~~~~~~~~~~~~~^^
+  File "c:\Users\MONSTER\Desktop\Kognita\kognita\ui.py", line 182, in refresh_report
+    self.create_overview_tab(category_totals, total_duration)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\MONSTER\Desktop\Kognita\kognita\ui.py", line 199, in create_overview_tab
+    persona_text, table_data = reporter.get_report_data(category_totals, total_duration)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'kognita.reporter' has no attribute 'get_report_data'
+2025-07-26 00:18:12,889 - INFO - tracker - Logged: python.exe - 9s - tk
+2025-07-26 00:18:22,299 - INFO - tracker - Logged: code.exe - 9s - main.py - Kognita - Visual Stu
+2025-07-26 00:18:31,332 - INFO - tracker - Logged: opera.exe - 9s - Google Gemini - Opera
+2025-07-26 00:18:31,435 - ERROR - _win32 - An error occurred when calling message handler
+Traceback (most recent call last):
+  File "C:\Users\MONSTER\AppData\Local\Programs\Python\Python313\Lib\site-packages\pystray\_win32.py", line 412, in _dispatcher
+    return int(icon._message_handlers.get(
+               ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        uMsg, lambda w, l: 0)(wParam, lParam) or 0)
+        ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "C:\Users\MONSTER\AppData\Local\Programs\Python\Python313\Lib\site-packages\pystray\_win32.py", line 201, in _on_notify
+    self()
+    ~~~~^^
+  File "C:\Users\MONSTER\AppData\Local\Programs\Python\Python313\Lib\site-packages\pystray\_base.py", line 110, in __call__
+    self._menu(self)
+    ~~~~~~~~~~^^^^^^
+  File "C:\Users\MONSTER\AppData\Local\Programs\Python\Python313\Lib\site-packages\pystray\_base.py", line 632, in __call__
+    return next(
+           ~~~~~
+        menuitem
+        ~~~~~~~~
+        for menuitem in self.items
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~
+        if menuitem.default)(icon)
+        ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\MONSTER\AppData\Local\Programs\Python\Python313\Lib\site-packages\pystray\_base.py", line 453, in __call__
+    return self._action(icon, self)
+           ~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\Users\MONSTER\AppData\Local\Programs\Python\Python313\Lib\site-packages\pystray\_base.py", line 548, in wrapper0
+    return action()
+  File "c:\Users\MONSTER\Desktop\Kognita\main.py", line 141, in <lambda>
+    pystray.MenuItem('Raporu Göster', lambda: ui.ReportWindow(master=self.root), default=True),
+                                              ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "c:\Users\MONSTER\Desktop\Kognita\kognita\ui.py", line 141, in __init__
+    self.refresh_report()
+    ~~~~~~~~~~~~~~~~~~~^^
+  File "c:\Users\MONSTER\Desktop\Kognita\kognita\ui.py", line 182, in refresh_report
+    self.create_overview_tab(category_totals, total_duration)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\MONSTER\Desktop\Kognita\kognita\ui.py", line 199, in create_overview_tab
+    persona_text, table_data = reporter.get_report_data(category_totals, total_duration)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'kognita.reporter' has no attribute 'get_report_data'
+2025-07-26 00:18:34,348 - INFO - tracker - Logged: explorer.exe - 3s - Sistem tepsisi taþma penceresi
+2025-07-26 00:18:40,527 - INFO - tracker - Logged: python.exe - 6s - tk
+2025-07-26 00:18:43,545 - INFO - tracker - Logged: opera.exe - 3s - Google Gemini - Opera
+2025-07-26 00:19:04,599 - INFO - tracker - Logged: code.exe - 21s - main.py - Kognita - Visual Stu
+2025-07-26 00:19:10,626 - INFO - tracker - Logged: code.exe - 6s - Visual Studio Code
+2025-07-26 00:19:16,653 - INFO - tracker - Logged: code.exe - 6s - main.py - Kognita - Visual Stu
+2025-07-26 00:19:19,672 - INFO - tracker - Logged: code.exe - 3s - .gitignore - Kognita - Visual 
+2025-07-26 00:19:25,732 - INFO - tracker - Logged: code.exe - 3s - .gitignore - Kognita - Visual 
+2025-07-26 00:19:28,750 - INFO - tracker - Logged: code.exe - 3s - Visual Studio Code
+2025-07-26 00:19:31,772 - INFO - tracker - Logged: code.exe - 3s - .gitignore - Kognita - Visual 
+2025-07-26 00:19:46,840 - INFO - tracker - Logged: code.exe - 15s - COMMIT_EDITMSG - Kognita - Vis
+2025-07-26 00:20:04,874 - INFO - tracker - Logged: opera.exe - 18s - Google Gemini - Opera
+2025-07-26 00:20:07,883 - INFO - tracker - Logged: code.exe - 3s - COMMIT_EDITMSG - Kognita - Vis
+2025-07-26 00:20:16,905 - INFO - tracker - Logged: code.exe - 9s - reporter.py - Kognita - Visual
+2025-07-26 00:20:18,581 - ERROR - _win32 - An error occurred when calling message handler
+Traceback (most recent call last):
+  File "C:\Users\MONSTER\AppData\Local\Programs\Python\Python313\Lib\site-packages\pystray\_win32.py", line 412, in _dispatcher
+    return int(icon._message_handlers.get(
+               ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        uMsg, lambda w, l: 0)(wParam, lParam) or 0)
+        ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "C:\Users\MONSTER\AppData\Local\Programs\Python\Python313\Lib\site-packages\pystray\_win32.py", line 201, in _on_notify
+    self()
+    ~~~~^^
+  File "C:\Users\MONSTER\AppData\Local\Programs\Python\Python313\Lib\site-packages\pystray\_base.py", line 110, in __call__
+    self._menu(self)
+    ~~~~~~~~~~^^^^^^
+  File "C:\Users\MONSTER\AppData\Local\Programs\Python\Python313\Lib\site-packages\pystray\_base.py", line 632, in __call__
+    return next(
+           ~~~~~
+        menuitem
+        ~~~~~~~~
+        for menuitem in self.items
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~
+        if menuitem.default)(icon)
+        ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\MONSTER\AppData\Local\Programs\Python\Python313\Lib\site-packages\pystray\_base.py", line 453, in __call__
+    return self._action(icon, self)
+           ~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\Users\MONSTER\AppData\Local\Programs\Python\Python313\Lib\site-packages\pystray\_base.py", line 548, in wrapper0
+    return action()
+  File "c:\Users\MONSTER\Desktop\Kognita\main.py", line 141, in <lambda>
+    pystray.MenuItem('Raporu Göster', lambda: ui.ReportWindow(master=self.root), default=True),
+                                              ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "c:\Users\MONSTER\Desktop\Kognita\kognita\ui.py", line 141, in __init__
+    self.refresh_report()
+    ~~~~~~~~~~~~~~~~~~~^^
+  File "c:\Users\MONSTER\Desktop\Kognita\kognita\ui.py", line 182, in refresh_report
+    self.create_overview_tab(category_totals, total_duration)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\MONSTER\Desktop\Kognita\kognita\ui.py", line 199, in create_overview_tab
+    persona_text, table_data = reporter.get_report_data(category_totals, total_duration)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'kognita.reporter' has no attribute 'get_report_data'
+2025-07-26 00:20:19,913 - INFO - tracker - Logged: code.exe - 3s - main.py - Kognita - Visual Stu
+2025-07-26 00:20:22,932 - INFO - tracker - Logged: python.exe - 3s - tk
+2025-07-26 00:20:23,363 - INFO - main - Exit action initiated by user.
+2025-07-26 00:20:23,364 - INFO - tracker - Stopping Kognita Tracker...
+2025-07-26 00:20:23,365 - INFO - tracker - Tracker thread stopped gracefully.
+2025-07-26 00:20:23,383 - INFO - main - Tkinter mainloop finished. Cleaning up.
+2025-07-26 00:20:23,383 - INFO - main - Application exited gracefully.
+2025-07-26 00:20:33,278 - INFO - main - Application starting...
+2025-07-26 00:20:33,328 - INFO - tracker - Tracker settings updated: Idle threshold set to 180s
+2025-07-26 00:20:33,331 - INFO - main - Background threads (Tracker, Goal Checker) started.
+2025-07-26 00:20:33,367 - INFO - tracker - Activity listeners started.
+2025-07-26 00:20:33,367 - INFO - tracker - Kognita Tracker is now active.
+2025-07-26 00:20:45,398 - INFO - tracker - Logged: python.exe - 12s - tk
+2025-07-26 00:20:47,005 - INFO - main - Exit action initiated by user.
+2025-07-26 00:20:47,006 - INFO - tracker - Stopping Kognita Tracker...
+2025-07-26 00:20:47,007 - INFO - tracker - Tracker thread stopped gracefully.

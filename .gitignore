@@ -17,3 +17,4 @@ env/
 # IDE-specific
 .idea/
 .vscode/
+*.log
