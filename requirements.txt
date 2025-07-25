@@ -1,5 +1,4 @@
 psutil
-pygetwindow
 pywin32
 pynput
 pystray
