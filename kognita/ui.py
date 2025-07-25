@@ -52,8 +52,7 @@ class BaseWindow(tk.Toplevel):
         self._drag_start_x = 0
         self._drag_start_y = 0
         
-        # --- DEĞİŞTİ: .pack() yerine .grid() kullanarak daha stabil bir yerleşim sağlıyoruz ---
-        self.border_frame.grid_rowconfigure(1, weight=1) # Ana çerçevenin genişlemesini sağla
+        self.border_frame.grid_rowconfigure(1, weight=1)
         self.border_frame.grid_columnconfigure(0, weight=1)
 
         self.header_frame = Frame(self.border_frame, bg=STYLE_CONFIG["header_bg"], height=50)
@@ -64,7 +63,7 @@ class BaseWindow(tk.Toplevel):
         self.main_frame.grid(row=1, column=0, sticky="nsew")
         self.footer_frame.grid(row=2, column=0, sticky="ew")
         
-        self.footer_frame.pack_propagate(False) # Footer'ın boyutunun sabit kalmasını sağla
+        self.footer_frame.pack_propagate(False)
 
         self.header_frame.bind("<ButtonPress-1>", self.start_drag)
         self.header_frame.bind("<B1-Motion>", self.do_drag)
@@ -122,7 +121,7 @@ class BaseWindow(tk.Toplevel):
 class WelcomeWindow(BaseWindow):
     """Uygulama ilk kez çalıştığında gösterilen çok adımlı karşılama sihirbazı."""
     def __init__(self, master, on_close_callback):
-        super().__init__(master, "Kognita'ya Hoş Geldiniz", "600x520") # Pencereyi biraz büyüttük
+        super().__init__(master, "Kognita'ya Hoş Geldiniz", "600x520")
         self.on_close_callback = on_close_callback
         self.current_step = 0
         self.steps = [self.create_step1, self.create_step2, self.create_step3]
@@ -169,22 +168,20 @@ class WelcomeWindow(BaseWindow):
 
     def create_step1(self):
         """Adım 1: Karşılama ve ana görsel."""
-        Label(self.main_frame, text="Dijital Alışkanlıklarınızı Keşfedin", font=STYLE_CONFIG['font_title'], bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['text_color']).pack(pady=(10, 20))
-        
-        # --- YENİ: Fotoğrafı orantılı küçülten ve ortalayan mantık ---
-        try:
-            # Fotoğraf için bir çerçeve oluştur, bu ortalamayı kolaylaştırır
-            image_container = Frame(self.main_frame, bg=STYLE_CONFIG['bg_color'])
-            image_container.pack(pady=20, expand=True)
+        # --- YENİ: Daha profesyonel metinler ---
+        Label(self.main_frame, text="Dijital Dünyanızı Anlamlandırın", font=STYLE_CONFIG['font_title'], bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['text_color']).pack(pady=(5, 10))
+        Label(self.main_frame, text="Zamanınızın nereye gittiğini keşfedin ve kontrolü elinize alın.", font=STYLE_CONFIG['font_normal'], bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['text_color']).pack(pady=(0, 20))
 
-            # Maksimum genişlik ve yükseklik belirle
+        try:
+            image_container = Frame(self.main_frame, bg=STYLE_CONFIG['bg_color'])
+            image_container.pack(pady=10, expand=True)
+
             max_width = 400
             max_height = 300
 
             original_image = Image.open(resource_path("welcome_illustration.png"))
             original_width, original_height = original_image.size
 
-            # En boy oranını koruyarak yeni boyutu hesapla
             ratio = min(max_width / original_width, max_height / original_height)
             new_width = int(original_width * ratio)
             new_height = int(original_height * ratio)
@@ -201,19 +198,20 @@ class WelcomeWindow(BaseWindow):
 
     def create_step2(self):
         """Adım 2: Nasıl Çalışır."""
-        Label(self.main_frame, text="Nasıl Çalışır?", font=STYLE_CONFIG['font_title'], bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['text_color']).pack(pady=(10, 25))
+        Label(self.main_frame, text="Temel Özellikler", font=STYLE_CONFIG['font_title'], bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['text_color']).pack(pady=(10, 25))
         
+        # --- YENİ: Daha fayda odaklı metinler ---
         info_texts = [
-            ("Sessiz Takip", "Arka planda hangi uygulamada ne kadar kaldığınızı kaydeder."),
-            ("Otomatik Analiz", "Verilerinizi 'İş', 'Oyun', 'Tasarım' gibi kategorilere ayırır."),
-            ("Kolay Erişim", "Tüm rapor ve ayarlara sistem tepsisi (sağ alt köşe) ikonundan ulaşabilirsiniz.")
+            ("Akıllı ve Otomatik Takip", "Siz çalışırken Kognita arka planda hangi uygulamayı ne kadar kullandığınızı sessizce ve güvenli bir şekilde kaydeder."),
+            ("Anlaşılır Raporlar", "Verilerinizi 'İş', 'Oyun', 'Tasarım' gibi kategorilerde toplar ve kolayca yorumlanabilen grafiklerle size sunar."),
+            ("Kişisel Hedefler & Bildirimler", "Belirli kategoriler için günlük kullanım limitleri belirleyin, hedeflerinize ulaştığınızda veya limitinizi aştığınızda bildirim alın.")
         ]
         
         for title, desc in info_texts:
             line_frame = Frame(self.main_frame, bg=STYLE_CONFIG['bg_color'])
-            line_frame.pack(fill='x', pady=8, padx=40, anchor='w')
-            Label(line_frame, text=f"✓  {title}:", font=STYLE_CONFIG['font_bold'], bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['accent_color']).pack(side='left', anchor='n')
-            Label(line_frame, text=desc, font=STYLE_CONFIG['font_normal'], wraplength=400, justify='left', bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['text_color']).pack(side='left', padx=10, anchor='w')
+            line_frame.pack(fill='x', pady=10, padx=30, anchor='w')
+            Label(line_frame, text=f"✓  {title}:", font=STYLE_CONFIG['font_bold'], bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['accent_color']).pack(anchor='w')
+            Label(line_frame, text=desc, font=STYLE_CONFIG['font_normal'], wraplength=450, justify='left', bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['text_color']).pack(anchor='w', pady=(5,0))
 
     def create_step3(self):
         """Adım 3: Gizlilik Güvencesi."""
@@ -226,9 +224,33 @@ class WelcomeWindow(BaseWindow):
         except Exception:
              pass
 
-        privacy_text = ("• Tüm verileriniz **sadece sizin bilgisayarınızda** saklanır.\n""• Kognita, hiçbir veriyi internete göndermez veya paylaşmaz.\n""• Sadece uygulama isimlerini ve pencere başlıklarını kaydeder,\n  tuş vuruşlarını veya ekran görüntülerini **asla kaydetmez**.")
+        # --- YENİ: Daha güven veren metin ---
+        privacy_text = (
+            "Kognita, gizliliğinize saygı duyar. Tüm verileriniz, uygulamanın kurulu olduğu "
+            "bilgisayar dışına **asla çıkarılmaz** ve herhangi bir sunucuya gönderilmez. "
+            "Yaptığınız her şey **sadece sizin bilgisayarınızda** kalır.\n\n"
+            "Uygulama, tuş vuruşlarınızı, ekran görüntülerinizi veya kişisel dosyalarınızı "
+            "**asla kaydetmez** ve takip etmez."
+        )
         
-        Label(self.main_frame, text=privacy_text, font=STYLE_CONFIG['font_normal'], justify='left', bg='#F4F6F7', fg=STYLE_CONFIG['text_color'], relief='solid', bd=1, bordercolor=STYLE_CONFIG['border_color'], padx=20, pady=15).pack(pady=20, padx=20, fill='x')
+        # --- DEĞİŞTİ: "-bordercolor" hatasını düzelten yapı ---
+        # Önce kenarlık görevi görecek bir Frame oluşturuyoruz.
+        border_frame = Frame(self.main_frame, bg=STYLE_CONFIG['border_color'], bd=1)
+        border_frame.pack(pady=15, padx=20, fill='x')
+        
+        # Asıl Label'ı bu Frame'in içine yerleştiriyoruz.
+        # Label'ın kenar boşlukları (padx, pady), dışındaki Frame'in rengini (kenarlık rengi) gösterir.
+        Label(border_frame, 
+              text=privacy_text, 
+              font=STYLE_CONFIG['font_normal'], 
+              justify='left', 
+              bg='#F4F6F7', 
+              fg=STYLE_CONFIG['text_color'],
+              wraplength=480,
+              padx=15, 
+              pady=15
+        ).pack(fill='x')
+
 
 class ReportWindow(BaseWindow):
     def __init__(self, master):
