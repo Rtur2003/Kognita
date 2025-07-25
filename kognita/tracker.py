@@ -7,14 +7,15 @@ import win32gui
 import logging
 from threading import Event
 from pynput import mouse, keyboard
-from .database import get_db_connection
+# --- DEĞİŞTİ: Artık doğrudan database.add_usage_log kullanacağız ---
+from . import database
 
 class ActivityTracker:
     def __init__(self, config, stop_event):
         self.config = config
         self.stop_event = stop_event
         self.last_activity_time = time.time()
-        self.idle_threshold_seconds = 180  # Varsayılan değer
+        self.idle_threshold_seconds = 180
         self.update_settings(config)
 
     def update_settings(self, config):
@@ -29,7 +30,6 @@ class ActivityTracker:
 
     def _start_listeners(self):
         """Klavye ve fare hareketlerini dinleyen pynput dinleyicilerini başlatır."""
-        # pynput dinleyicilerini doğrudan kendi metodlarımıza bağlayalım
         mouse_listener = mouse.Listener(
             on_move=lambda x, y: self._on_activity(),
             on_click=lambda x, y, button, pressed: self._on_activity(),
@@ -59,25 +59,20 @@ class ActivityTracker:
             process = psutil.Process(pid)
             return process.name().lower(), win32gui.GetWindowText(hwnd)
         except (psutil.NoSuchProcess, psutil.AccessDenied, Exception) as e:
-            # Hataları loglayalım ama programı çökertmeyelim
             logging.debug(f"Aktif işlem bilgisi alınırken hata: {e}")
             return 'unknown', 'Bilinmeyen'
 
-    def _log_activity(self, conn, process_name, title, start_time, end_time):
+    def _log_activity(self, process_name, title, start_time, end_time):
         """Aktiviteyi veritabanına kaydeder."""
         duration = int(end_time - start_time)
-        # Çok kısa süreli veya anlamsız kayıtları filtrele
-        if duration < 2 or process_name in ['idle', 'unknown']:
+        if duration < 2: # idle ve unknown dışındaki kısa kayıtları da engelleyebiliriz
             return
             
         try:
-            cursor = conn.cursor()
-            cursor.execute(
-                "INSERT INTO usage_log (process_name, window_title, start_time, end_time, duration_seconds) VALUES (?, ?, ?, ?, ?)",
-                (process_name, title, int(start_time), int(end_time), duration)
-            )
-            conn.commit()
-            logging.info(f"Loglandı: {process_name} - {duration}s - {title[:40]}")
+            # --- DEĞİŞTİ: Yeni şifreli kayıt fonksiyonunu çağırıyoruz ---
+            database.add_usage_log(process_name, title, start_time, end_time, duration)
+            if process_name not in ['idle', 'unknown']:
+                logging.info(f"Loglandı: {process_name} - {duration}s - {title[:40]}")
         except Exception as e:
             logging.error(f"Veritabanına loglama sırasında hata: {e}")
 
@@ -95,21 +90,15 @@ class ActivityTracker:
                 
                 if current_process_name != last_process_name or current_window_title != last_window_title:
                     session_end_time = time.time()
-                    with get_db_connection() as conn:
-                        if conn:
-                            self._log_activity(conn, last_process_name, last_window_title, session_start_time, session_end_time)
+                    self._log_activity(last_process_name, last_window_title, session_start_time, session_end_time)
                     
                     session_start_time = time.time()
                     last_process_name = current_process_name
                     last_window_title = current_window_title
 
-                # stop_event.wait() kullanımı, döngünün daha verimli çalışmasını sağlar.
-                self.stop_event.wait(3) # 3 saniyede bir kontrol et
+                self.stop_event.wait(3)
         finally:
             logging.info("Kognita Tracker durduruluyor...")
-            # Kapanışta son aktiviteyi de kaydet
             final_end_time = time.time()
-            with get_db_connection() as conn:
-                if conn:
-                    self._log_activity(conn, last_process_name, last_window_title, session_start_time, final_end_time)
+            self._log_activity(last_process_name, last_window_title, session_start_time, final_end_time)
             logging.info("Tracker thread'i düzgün bir şekilde sonlandırıldı.")

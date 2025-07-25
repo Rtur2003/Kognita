@@ -5,3 +5,6 @@ pystray
 Pillow
 plyer
 matplotlib
+pycryptodomex
+sentry-sdk
+wmi

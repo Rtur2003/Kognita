@@ -1,7 +1,7 @@
 # kognita/ui.py
 
 import tkinter as tk
-from tkinter import ttk, messagebox, Listbox, StringVar, Frame, Label, Entry, Button, filedialog
+from tkinter import ttk, messagebox, Listbox, StringVar, Frame, Label, Entry, Button, filedialog, Checkbutton, IntVar
 import datetime
 import os
 import sys
@@ -13,7 +13,6 @@ from . import analyzer, database, reporter
 from .achievement_checker import ACHIEVEMENTS
 from .utils import resource_path
 
-# Matplotlib import'larını try-except bloğuna alarak opsiyonel hale getirelim
 try:
     from matplotlib.figure import Figure
     from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -21,7 +20,6 @@ try:
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
 
-# --- STİL YAPILANDIRMASI ---
 STYLE_CONFIG = {
     "font_normal": ("Segoe UI", 10),
     "font_bold": ("Segoe UI", 11, "bold"),
@@ -167,8 +165,6 @@ class WelcomeWindow(BaseWindow):
             self.next_button.config(text="İleri >", command=self.next_step, bg=STYLE_CONFIG['accent_color'])
 
     def create_step1(self):
-        """Adım 1: Karşılama ve ana görsel."""
-        # --- YENİ: Daha profesyonel metinler ---
         Label(self.main_frame, text="Dijital Dünyanızı Anlamlandırın", font=STYLE_CONFIG['font_title'], bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['text_color']).pack(pady=(5, 10))
         Label(self.main_frame, text="Zamanınızın nereye gittiğini keşfedin ve kontrolü elinize alın.", font=STYLE_CONFIG['font_normal'], bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['text_color']).pack(pady=(0, 20))
 
@@ -197,10 +193,8 @@ class WelcomeWindow(BaseWindow):
             logging.warning(f"Hoşgeldin ekranı görseli yüklenemedi: {e}")
 
     def create_step2(self):
-        """Adım 2: Nasıl Çalışır."""
         Label(self.main_frame, text="Temel Özellikler", font=STYLE_CONFIG['font_title'], bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['text_color']).pack(pady=(10, 25))
         
-        # --- YENİ: Daha fayda odaklı metinler ---
         info_texts = [
             ("Akıllı ve Otomatik Takip", "Siz çalışırken Kognita arka planda hangi uygulamayı ne kadar kullandığınızı sessizce ve güvenli bir şekilde kaydeder."),
             ("Anlaşılır Raporlar", "Verilerinizi 'İş', 'Oyun', 'Tasarım' gibi kategorilerde toplar ve kolayca yorumlanabilen grafiklerle size sunar."),
@@ -214,7 +208,6 @@ class WelcomeWindow(BaseWindow):
             Label(line_frame, text=desc, font=STYLE_CONFIG['font_normal'], wraplength=450, justify='left', bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['text_color']).pack(anchor='w', pady=(5,0))
 
     def create_step3(self):
-        """Adım 3: Gizlilik Güvencesi."""
         Label(self.main_frame, text="Gizliliğiniz Önceliğimizdir", font=STYLE_CONFIG['font_title'], bg=STYLE_CONFIG['bg_color'], fg=STYLE_CONFIG['text_color']).pack(pady=(10, 25))
 
         try:
@@ -224,7 +217,6 @@ class WelcomeWindow(BaseWindow):
         except Exception:
              pass
 
-        # --- YENİ: Daha güven veren metin ---
         privacy_text = (
             "Kognita, gizliliğinize saygı duyar. Tüm verileriniz, uygulamanın kurulu olduğu "
             "bilgisayar dışına **asla çıkarılmaz** ve herhangi bir sunucuya gönderilmez. "
@@ -233,13 +225,9 @@ class WelcomeWindow(BaseWindow):
             "**asla kaydetmez** ve takip etmez."
         )
         
-        # --- DEĞİŞTİ: "-bordercolor" hatasını düzelten yapı ---
-        # Önce kenarlık görevi görecek bir Frame oluşturuyoruz.
         border_frame = Frame(self.main_frame, bg=STYLE_CONFIG['border_color'], bd=1)
         border_frame.pack(pady=15, padx=20, fill='x')
         
-        # Asıl Label'ı bu Frame'in içine yerleştiriyoruz.
-        # Label'ın kenar boşlukları (padx, pady), dışındaki Frame'in rengini (kenarlık rengi) gösterir.
         Label(border_frame, 
               text=privacy_text, 
               font=STYLE_CONFIG['font_normal'], 
@@ -250,6 +238,52 @@ class WelcomeWindow(BaseWindow):
               padx=15, 
               pady=15
         ).pack(fill='x')
+
+
+# --- YENİ: Odaklanma Modu Ayar Penceresi ---
+class FocusSetupWindow(BaseWindow):
+    def __init__(self, master, on_start_callback):
+        super().__init__(master, "Odaklanma Oturumu Başlat", "420x450")
+        self.on_start_callback = on_start_callback
+        self.category_vars = {}
+
+        Label(self.main_frame, text="Oturum Süresi (dakika):", font=STYLE_CONFIG['font_bold'], bg=STYLE_CONFIG['bg_color']).pack(anchor='w', pady=(0,5))
+        
+        self.duration_var = StringVar(value="25")
+        duration_frame = Frame(self.main_frame, bg=STYLE_CONFIG['bg_color'])
+        duration_frame.pack(anchor='w', pady=(0, 20), fill='x')
+        for duration in ["25", "45", "60", "90"]:
+            rb = ttk.Radiobutton(duration_frame, text=f"{duration} dk", variable=self.duration_var, value=duration)
+            rb.pack(side='left', padx=5)
+
+        Label(self.main_frame, text="İzin Verilen Kategoriler:", font=STYLE_CONFIG['font_bold'], bg=STYLE_CONFIG['bg_color']).pack(anchor='w', pady=(0,10))
+        
+        categories_frame = Frame(self.main_frame, bg=STYLE_CONFIG['bg_color'])
+        categories_frame.pack(anchor='w', fill='x')
+        
+        all_categories = database.get_all_categories()
+        # Kategorileri 2 sütun halinde göstermek için
+        col_count = 2
+        
+        for i, category in enumerate(all_categories):
+            if category == 'Other': continue # Diğer kategorisi genellikle izin verilmez
+            var = IntVar(value=1 if category in ["Development", "Office"] else 0)
+            cb = Checkbutton(categories_frame, text=category, variable=var, bg=STYLE_CONFIG['bg_color'], font=STYLE_CONFIG['font_normal'])
+            cb.grid(row=i // col_count, column=i % col_count, sticky='w', padx=5)
+            self.category_vars[category] = var
+
+        Button(self.footer_frame, text="Oturumu Başlat", command=self.start_session, bg=STYLE_CONFIG['success_color'], fg='white', font=STYLE_CONFIG['font_bold']).pack(pady=10, padx=20, fill='x')
+
+    def start_session(self):
+        duration = int(self.duration_var.get())
+        allowed_categories = [category for category, var in self.category_vars.items() if var.get() == 1]
+
+        if not allowed_categories:
+            messagebox.showwarning("Kategori Seçilmedi", "Odaklanma oturumu için en az bir kategori seçmelisiniz.", parent=self)
+            return
+
+        self.on_start_callback(duration, allowed_categories)
+        self.destroy()
 
 
 class ReportWindow(BaseWindow):
@@ -308,12 +342,9 @@ class ReportWindow(BaseWindow):
     def get_date_range(self):
         selection = self.time_range_var.get()
         today = datetime.datetime.now()
-        if "24 Saat" in selection:
-            days = 1
-        elif "7 Gün" in selection:
-            days = 7
-        else:
-            days = 30
+        if "24 Saat" in selection: days = 1
+        elif "7 Gün" in selection: days = 7
+        else: days = 30
         return today - datetime.timedelta(days=days), today
 
     def clear_frame(self, frame):
@@ -398,10 +429,7 @@ class ReportWindow(BaseWindow):
         scrollbar = ttk.Scrollbar(self.tab_achievements, orient="vertical", command=canvas.yview)
         scrollable_frame = ttk.Frame(canvas)
 
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
+        scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
@@ -427,8 +455,7 @@ class ReportWindow(BaseWindow):
 
             try:
                 img = Image.open(resource_path(icon_file)).resize((64, 64), Image.Resampling.LANCZOS)
-                if not is_unlocked:
-                    img = img.convert('LA').convert('RGBA')
+                if not is_unlocked: img = img.convert('LA').convert('RGBA')
                 
                 self.achievement_icons[ach_id] = ImageTk.PhotoImage(img)
                 icon_label.config(image=self.achievement_icons[ach_id])
@@ -451,6 +478,7 @@ class ReportWindow(BaseWindow):
                 desc_label.config(fg='grey')
 
 class GoalsWindow(BaseWindow):
+    # ... Bu sınıfın içeriği değişmedi ...
     def __init__(self, master):
         super().__init__(master, "Hedefleri Yönet", "450x480")
         self.resizable(False, False)
@@ -512,6 +540,7 @@ class GoalsWindow(BaseWindow):
             except Exception as e: messagebox.showerror("Hata", f"Hedef silinemedi: {e}")
 
 class SettingsWindow(BaseWindow):
+    # ... Bu sınıfın içeriği değişmedi ...
     def __init__(self, master, app_instance):
         super().__init__(master, "Ayarlar", "400x350")
         self.app = app_instance
@@ -537,15 +566,13 @@ class SettingsWindow(BaseWindow):
         Button(self.footer_frame, text="Kaydet", command=self.save_settings_action, bg=STYLE_CONFIG["accent_color"], fg='white', relief='flat').pack(side='right')
 
     def export_data_action(self):
-        """Verileri CSV olarak dışa aktarmak için dosya diyalogunu açar."""
         file_path = filedialog.asksaveasfilename(
             defaultextension=".csv",
             filetypes=[("CSV Dosyaları", "*.csv"), ("Tüm Dosyalar", "*.*")],
             title="Kognita Veri Raporunu Kaydet",
             initialfile=f"kognita_raporu_{datetime.datetime.now().strftime('%Y-%m-%d')}.csv"
         )
-        if not file_path:
-            return
+        if not file_path: return
 
         success, error_message = database.export_all_data_to_csv(file_path)
 
@@ -571,6 +598,7 @@ class SettingsWindow(BaseWindow):
             messagebox.showerror("Hata", "Lütfen saniye için geçerli bir sayı girin.")
 
 class AppManagerWindow(BaseWindow):
+    # ... Bu sınıfın içeriği değişmedi ...
     def __init__(self, master):
         super().__init__(master, "Uygulama Yöneticisi", "500x450")
         
@@ -589,7 +617,7 @@ class AppManagerWindow(BaseWindow):
         custom_categories = ["Yeni Kategori Oluştur..."] + categories
 
         if custom_categories:
-            self.category_var.set(custom_categories[0])
+            self.category_var.set(custom_categories[0] if len(custom_categories) > 1 else "")
             self.category_menu = ttk.OptionMenu(action_frame, self.category_var, custom_categories[0], *custom_categories, command=self.handle_new_category)
             self.category_menu.grid(row=0, column=1, padx=5, sticky='ew')
         action_frame.grid_columnconfigure(1, weight=1)
