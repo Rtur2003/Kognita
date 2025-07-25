@@ -34,8 +34,7 @@ def _populate_initial_categories(conn):
     conn.commit()
 
 def initialize_database():
-    if os.path.exists(DB_FILE): return
-    print("Creating Kognita database for the first time...")
+    is_new_db = not os.path.exists(DB_FILE)
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
@@ -48,8 +47,36 @@ def initialize_database():
                 CREATE TABLE IF NOT EXISTS app_categories (
                     process_name TEXT PRIMARY KEY, category TEXT NOT NULL
                 )""")
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS goals (
+                    id INTEGER PRIMARY KEY, category TEXT NOT NULL, goal_type TEXT NOT NULL, time_limit_minutes INTEGER NOT NULL
+                )""")
             conn.commit()
-            _populate_initial_categories(conn)
-            print("Database initialized successfully.")
+            if is_new_db:
+                print("Creating Kognita database for the first time...")
+                _populate_initial_categories(conn)
+                print("Database initialized successfully.")
     except sqlite3.Error as e:
         print(f"Database initialization failed: {e}")
+
+def get_goals():
+    """Fetches all goals from the database."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, category, goal_type, time_limit_minutes FROM goals ORDER BY category")
+        return cursor.fetchall()
+
+def add_goal(category, goal_type, time_limit):
+    """Adds a new goal to the database."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO goals (category, goal_type, time_limit_minutes) VALUES (?, ?, ?)",
+                       (category, goal_type, time_limit))
+        conn.commit()
+
+def delete_goal(goal_id):
+    """Deletes a specific goal from the database."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM goals WHERE id = ?", (goal_id,))
+        conn.commit()
