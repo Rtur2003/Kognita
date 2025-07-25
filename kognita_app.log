@@ -134,3 +134,111 @@ SystemExit: 0
 2025-07-26 00:10:41,038 - INFO - tracker - Logged: opera.exe - 60s - Google Gemini - Opera
 2025-07-26 00:10:50,070 - INFO - tracker - Logged: opera.exe - 9s - Rtur2003/Kognita: The Art of U
 2025-07-26 00:10:53,362 - INFO - tracker - Logged: opera.exe - 3s - Google Gemini - Opera
+2025-07-26 00:11:32,599 - INFO - tracker - Logged: code.exe - 39s - main.py - Kognita - Visual Stu
+2025-07-26 00:11:35,610 - INFO - tracker - Logged: opera.exe - 3s - imresizer.com > Download - Ope
+2025-07-26 00:12:02,767 - INFO - tracker - Logged: opera.exe - 27s - Google Gemini - Opera
+2025-07-26 00:12:05,786 - INFO - tracker - Logged: opera.exe - 3s - Rtur2003/Kognita: The Art of U
+2025-07-26 00:12:08,800 - INFO - tracker - Logged: explorer.exe - 3s - Kognita - Dosya Gezgini
+2025-07-26 00:12:14,820 - INFO - tracker - Logged: explorer.exe - 6s - Downloads - Dosya Gezgini
+2025-07-26 00:12:18,422 - INFO - tracker - Logged: explorer.exe - 3s - Görev Geçiþi
+2025-07-26 00:12:27,896 - INFO - tracker - Logged: opera.exe - 9s - Hýzlý Eriþim - Opera
+2025-07-26 00:12:31,486 - INFO - tracker - Logged: opera.exe - 3s - png to 64x64 - Google'da Ara -
+2025-07-26 00:12:37,504 - INFO - tracker - Logged: opera.exe - 6s - Aç
+2025-07-26 00:12:52,700 - INFO - tracker - Logged: opera.exe - 15s - imresizer.com > Requirements -
+2025-07-26 00:12:58,726 - INFO - tracker - Logged: opera.exe - 6s - imresizer.com > Download - Ope
+2025-07-26 00:13:01,748 - INFO - tracker - Logged: opera.exe - 3s - 
+2025-07-26 00:13:19,792 - INFO - tracker - Logged: explorer.exe - 18s - Downloads - Dosya Gezgini
+2025-07-26 00:13:25,809 - INFO - tracker - Logged: code.exe - 6s - main.py - Kognita - Visual Stu
+2025-07-26 00:13:31,834 - INFO - tracker - Logged: code.exe - 6s - Gemini_Generated_Ima..._imresi
+2025-07-26 00:13:38,029 - INFO - tracker - Logged: code.exe - 6s - logo.png - Kognita - Visual St
+2025-07-26 00:13:41,113 - INFO - tracker - Logged: explorer.exe - 3s - Downloads - Dosya Gezgini
+2025-07-26 00:13:44,137 - INFO - tracker - Logged: opera.exe - 3s - imresizer.com > Download - Ope
+2025-07-26 00:13:53,306 - INFO - tracker - Logged: opera.exe - 9s - Google Gemini - Opera
+2025-07-26 00:14:02,328 - INFO - tracker - Logged: code.exe - 9s - main.py - Kognita - Visual Stu
+2025-07-26 00:14:11,674 - INFO - tracker - Logged: code.exe - 9s - logo.png - Kognita - Visual St
+2025-07-26 00:14:14,685 - INFO - tracker - Logged: opera.exe - 3s - Google Gemini - Opera
+2025-07-26 00:14:17,849 - INFO - tracker - Logged: code.exe - 3s - logo.png - Kognita - Visual St
+2025-07-26 00:14:35,969 - INFO - tracker - Logged: code.exe - 18s - ui.py - Kognita - Visual Studi
+2025-07-26 00:14:39,132 - INFO - tracker - Logged: opera.exe - 3s - Google Gemini - Opera
+2025-07-26 00:14:42,231 - INFO - tracker - Logged: explorer.exe - 3s - 
+2025-07-26 00:14:47,394 - INFO - main - Exit action initiated by user.
+2025-07-26 00:14:47,395 - INFO - tracker - Stopping Kognita Tracker...
+2025-07-26 00:14:47,404 - INFO - tracker - Logged: code.exe - 5s - main.py - Kognita - Visual Stu
+2025-07-26 00:14:47,405 - INFO - tracker - Tracker thread stopped gracefully.
+2025-07-26 00:14:47,412 - INFO - main - Tkinter mainloop finished. Cleaning up.
+2025-07-26 00:14:47,412 - INFO - main - Application exited gracefully.
+2025-07-26 00:14:48,219 - INFO - main - Application starting...
+2025-07-26 00:14:48,279 - INFO - tracker - Tracker settings updated: Idle threshold set to 180s
+2025-07-26 00:14:48,282 - INFO - main - Background threads (Tracker, Goal Checker) started.
+2025-07-26 00:14:48,305 - INFO - tracker - Activity listeners started.
+2025-07-26 00:14:48,305 - INFO - tracker - Kognita Tracker is now active.
+2025-07-26 00:14:51,321 - INFO - tracker - Logged: python.exe - 3s - tk
+2025-07-26 00:14:54,459 - INFO - tracker - Logged: code.exe - 3s - main.py - Kognita - Visual Stu
+2025-07-26 00:14:54,948 - ERROR - _win32 - An error occurred when calling message handler
+Traceback (most recent call last):
+  File "C:\Users\MONSTER\AppData\Local\Programs\Python\Python313\Lib\site-packages\pystray\_win32.py", line 412, in _dispatcher
+    return int(icon._message_handlers.get(
+               ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        uMsg, lambda w, l: 0)(wParam, lParam) or 0)
+        ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "C:\Users\MONSTER\AppData\Local\Programs\Python\Python313\Lib\site-packages\pystray\_win32.py", line 201, in _on_notify
+    self()
+    ~~~~^^
+  File "C:\Users\MONSTER\AppData\Local\Programs\Python\Python313\Lib\site-packages\pystray\_base.py", line 110, in __call__
+    self._menu(self)
+    ~~~~~~~~~~^^^^^^
+  File "C:\Users\MONSTER\AppData\Local\Programs\Python\Python313\Lib\site-packages\pystray\_base.py", line 632, in __call__
+    return next(
+           ~~~~~
+        menuitem
+        ~~~~~~~~
+        for menuitem in self.items
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~
+        if menuitem.default)(icon)
+        ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\MONSTER\AppData\Local\Programs\Python\Python313\Lib\site-packages\pystray\_base.py", line 453, in __call__
+    return self._action(icon, self)
+           ~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\Users\MONSTER\AppData\Local\Programs\Python\Python313\Lib\site-packages\pystray\_base.py", line 548, in wrapper0
+    return action()
+  File "c:\Users\MONSTER\Desktop\Kognita\main.py", line 141, in <lambda>
+    pystray.MenuItem('Raporu Göster', lambda: ui.ReportWindow(master=self.root), default=True),
+                                              ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "c:\Users\MONSTER\Desktop\Kognita\kognita\ui.py", line 114, in __init__
+    self.refresh_report()
+    ~~~~~~~~~~~~~~~~~~~^^
+  File "c:\Users\MONSTER\Desktop\Kognita\kognita\ui.py", line 148, in refresh_report
+    self.create_overview_tab(category_totals, total_duration, (end_date - start_date).days or 1)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\MONSTER\Desktop\Kognita\kognita\ui.py", line 167, in create_overview_tab
+    persona_text, table_data = reporter.get_report_data(category_totals, total_duration)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'kognita.reporter' has no attribute 'get_report_data'
+2025-07-26 00:14:57,472 - INFO - tracker - Logged: explorer.exe - 3s - Sistem tepsisi taþma penceresi
+2025-07-26 00:15:06,512 - INFO - tracker - Logged: python.exe - 9s - Aktivite Raporu
+2025-07-26 00:15:09,634 - INFO - tracker - Logged: snippingtool.exe - 3s - Ekran Alýntýsý Aracý Katmaný
+2025-07-26 00:15:12,678 - INFO - tracker - Logged: explorer.exe - 3s - Görev Geçiþi
+2025-07-26 00:15:33,740 - INFO - tracker - Logged: opera.exe - 21s - Google Gemini - Opera
+2025-07-26 00:15:39,765 - INFO - tracker - Logged: python.exe - 6s - Aktivite Raporu
+2025-07-26 00:15:42,787 - INFO - tracker - Logged: python.exe - 3s - 
+2025-07-26 00:15:45,805 - INFO - tracker - Logged: python.exe - 3s - Hedefleri Yönet
+2025-07-26 00:15:49,175 - INFO - tracker - Logged: opera.exe - 3s - Google Gemini - Opera
+2025-07-26 00:15:52,698 - INFO - tracker - Logged: python.exe - 3s - Ayarlar
+2025-07-26 00:15:55,601 - INFO - main - Exit action initiated by user.
+2025-07-26 00:15:55,602 - INFO - tracker - Stopping Kognita Tracker...
+2025-07-26 00:15:55,603 - INFO - tracker - Tracker thread stopped gracefully.
+2025-07-26 00:15:55,612 - INFO - main - Tkinter mainloop finished. Cleaning up.
+2025-07-26 00:15:55,613 - INFO - main - Application exited gracefully.
+2025-07-26 00:15:56,738 - INFO - main - Application starting...
+2025-07-26 00:15:56,808 - INFO - tracker - Tracker settings updated: Idle threshold set to 180s
+2025-07-26 00:15:56,811 - INFO - main - Background threads (Tracker, Goal Checker) started.
+2025-07-26 00:15:56,835 - INFO - tracker - Activity listeners started.
+2025-07-26 00:15:56,835 - INFO - tracker - Kognita Tracker is now active.
+2025-07-26 00:15:59,846 - INFO - tracker - Logged: explorer.exe - 3s - 
+2025-07-26 00:16:02,879 - INFO - tracker - Logged: code.exe - 3s - main.py - Kognita - Visual Stu
+2025-07-26 00:17:39,128 - INFO - tracker - Logged: opera.exe - 96s - Google Gemini - Opera
+2025-07-26 00:17:42,382 - INFO - tracker - Logged: code.exe - 3s - main.py - Kognita - Visual Stu
+2025-07-26 00:17:45,571 - INFO - tracker - Logged: code.exe - 3s - ui.py - Kognita - Visual Studi
+2025-07-26 00:17:48,215 - INFO - main - Exit action initiated by user.
+2025-07-26 00:17:48,215 - INFO - tracker - Stopping Kognita Tracker...
+2025-07-26 00:17:48,217 - INFO - tracker - Tracker thread stopped gracefully.
