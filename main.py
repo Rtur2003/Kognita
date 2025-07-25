@@ -5,9 +5,21 @@ from PIL import Image
 from threading import Thread
 import tkinter as tk
 from tkinter import scrolledtext
+import sys # YENİ
+import os  # YENİ
 
 # Kognita modüllerimizi import ediyoruz
 from kognita import tracker, reporter, database
+
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 def show_report_window():
     """Creates a simple Tkinter window to display the report."""
@@ -17,6 +29,13 @@ def show_report_window():
     window.title("Kognita - Activity Report (Last 24 Hours)")
     window.geometry("600x450")
     window.resizable(False, False)
+    
+    # Pencere ikonunu ayarla
+    try:
+        window.iconbitmap(resource_path("icon.ico"))
+    except:
+        print("Could not load window icon.")
+
 
     txt_area = scrolledtext.ScrolledText(window, wrap=tk.WORD, width=70, height=25, font=("Courier New", 9))
     txt_area.pack(padx=10, pady=10)
@@ -43,9 +62,10 @@ def run_tracker_in_background():
 def setup_and_run_tray_icon():
     """Sets up and runs the system tray icon."""
     try:
-        image = Image.open("icon.png")
+        # YENİ: İkonu bulmak için resource_path fonksiyonunu kullanıyoruz
+        image = Image.open(resource_path("icon.png"))
     except FileNotFoundError:
-        print("Error: icon.png not found! Please place a 64x64 icon.png in the project root directory.")
+        print("Error: icon.png not found! The file must be in the same directory as main.py.")
         return
 
     menu = (pystray.MenuItem('Show Report', show_report_window, default=True),
