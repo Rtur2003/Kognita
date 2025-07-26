@@ -1,4 +1,5 @@
-# kognita/ui.py (TAMAMI - Adım 11 Hata Düzeltmeleri Uygulandı)
+ 
+# kognita/ui.py - Geliştirilmiş ve Optimize Edilmiş UI
 
 import logging
 import tkinter as tk
@@ -11,39 +12,66 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg 
 
-
 # Yerel modülleri içe aktar
 from . import analyzer, database, reporter 
 
-# Matplotlib import'larını try-except bloğuna alarak opsiyonel hale getirelim
+# Matplotlib kontrolü
+MATPLOTLIB_AVAILABLE = True
 try:
-    # Bu importlar sadece MATPLOTLIB_AVAILABLE True ise kullanılacak
-    # from matplotlib.figure import Figure
-    # from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-    MATPLOTLIB_AVAILABLE = True
+    import matplotlib
+    matplotlib.use('TkAgg')  # Backend ayarla
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
-    print("Matplotlib kütüphanesi bulunamadı. Grafik özellikleri devre dışı bırakılacak.")
+    logging.warning("Matplotlib kütüphanesi bulunamadı. Grafik özellikleri devre dışı.")
 
-
-# --- Stil ve Tasarım Yapılandırması ---
+# Modern UI Konfigürasyonu
 STYLE_CONFIG = {
+    # Fontlar
+    "font_family": "Segoe UI",
     "font_normal": ("Segoe UI", 10),
-    "font_bold": ("Segoe UI Semibold", 11),
+    "font_bold": ("Segoe UI", 10, "bold"),
     "font_title": ("Segoe UI Light", 18),
-    "header_bg": "#2c3e50",  # Koyu Mavi-Gri
-    "header_fg": "#ecf0f1",  # Açık Gri
-    "bg_color": "#ffffff",    # Beyaz
-    "footer_bg": "#f8f9fa",  # Çok Açık Gri
-    "accent_color": "#3498db", # Parlak Mavi
-    "danger_color": "#e74c3c", # Kırmızı
-    "success_color": "#2ecc71", # Yeşil
-    "button_default_bg": "#e0e0e0", # Varsayılan buton rengi
-    "button_default_fg": "black",
+    "font_h2": ("Segoe UI Semibold", 14),
+    "font_h3": ("Segoe UI", 12, "bold"),
+    "font_small": ("Segoe UI", 9),
+
+    # Modern Renk Paleti
+    "bg_color": "#F8F9FA",              # Ana arka plan (açık gri-beyaz)
+    "bg_secondary": "#FFFFFF",          # İkincil arka plan (beyaz)
+    "bg_card": "#FFFFFF",               # Kart arka planları
+    
+    "text_primary": "#212529",          # Ana metin (koyu gri)
+    "text_secondary": "#6C757D",        # İkincil metin (orta gri)
+    "text_muted": "#ADB5BD",            # Soluk metin
+    
+    "accent_color": "#0066CC",          # Ana vurgu rengi (mavi)
+    "accent_hover": "#0052A3",          # Hover durumu
+    "accent_light": "#E7F1FF",          # Açık vurgu
+    
+    "success_color": "#28A745",         # Başarı rengi (yeşil)
+    "warning_color": "#FFC107",         # Uyarı rengi (sarı)
+    "danger_color": "#DC3545",          # Hata rengi (kırmızı)
+    "info_color": "#17A2B8",            # Bilgi rengi (mavi-yeşil)
+    
+    "border_color": "#DEE2E6",          # Kenarlık rengi
+    "shadow_color": "#00000010",        # Gölge rengi
+    
+    # Header özel renkler
+    "header_bg": "#FFFFFF",
+    "header_fg": "#212529",
+    "header_border": "#DEE2E6",
+    
+    # Footer renkler
+    "footer_bg": "#F8F9FA",
+    "footer_border": "#DEE2E6",
+    
+    # Buton varsayılanları
+    "button_default_bg": "#6C757D",
+    "button_default_fg": "#FFFFFF",
 }
 
 def resource_path(relative_path):
-    """ PyInstaller ile paketlendiğinde varlık dosyalarına doğru yolu bulur. """
+    """PyInstaller ile paketlendiğinde varlık dosyalarına doğru yolu bulur."""
     try:
         base_path = sys._MEIPASS
     except Exception:
@@ -51,96 +79,256 @@ def resource_path(relative_path):
     return os.path.join(base_path, 'assets', relative_path)
 
 def apply_global_styles():
-    """Uygulama genelinde ttk stillerini ayarlar."""
+    """Modern ve tutarlı ttk stillerini uygular."""
     style = ttk.Style()
-    style.theme_use('clam') 
-
-    style.configure('.', font=STYLE_CONFIG["font_normal"]) 
+    style.theme_use('clam')
     
-    style.configure('TButton', font=STYLE_CONFIG["font_bold"], background=STYLE_CONFIG["button_default_bg"], foreground=STYLE_CONFIG["button_default_fg"])
-    style.map('TButton', background=[('active', '#cceeff'), ('!disabled', STYLE_CONFIG["button_default_bg"])])
-
-    style.configure('TLabel', font=STYLE_CONFIG["font_normal"], background=STYLE_CONFIG["bg_color"])
-    style.configure('TCheckbutton', font=STYLE_CONFIG["font_normal"], background=STYLE_CONFIG["bg_color"])
-    style.configure('TRadiobutton', font=STYLE_CONFIG["font_normal"], background=STYLE_CONFIG["bg_color"])
-    style.configure('TEntry', font=STYLE_CONFIG["font_normal"])
-    style.configure('TCombobox', font=STYLE_CONFIG["font_normal"])
-    style.configure('TSpinbox', font=STYLE_CONFIG["font_normal"])
-    # Tüm Frame'ler için ttk.Frame stili uygulandı.
-    style.configure('TFrame', background=STYLE_CONFIG["bg_color"]) 
-    style.configure('TLabelframe', background=STYLE_CONFIG["bg_color"])
-    style.configure('TLabelframe.Label', font=STYLE_CONFIG["font_bold"], background=STYLE_CONFIG["bg_color"])
-
-    style.configure('Treeview', font=STYLE_CONFIG["font_normal"], rowheight=25, background=STYLE_CONFIG["bg_color"], fieldbackground=STYLE_CONFIG["bg_color"], foreground='black')
-    style.map('Treeview', background=[('selected', STYLE_CONFIG['accent_color'])], foreground=[('selected', 'white')])
-    style.configure('Treeview.Heading', font=STYLE_CONFIG["font_bold"], background=STYLE_CONFIG["header_bg"], foreground=STYLE_CONFIG["header_fg"])
+    # Temel widget stilleri
+    style.configure('TLabel', 
+                   font=STYLE_CONFIG["font_normal"], 
+                   background=STYLE_CONFIG["bg_color"],
+                   foreground=STYLE_CONFIG["text_primary"])
     
-    style.configure('TNotebook', background=STYLE_CONFIG["bg_color"])
-    style.configure('TNotebook.Tab', font=STYLE_CONFIG["font_bold"], background=STYLE_CONFIG["footer_bg"], foreground='black')
-    style.map('TNotebook.Tab', background=[('selected', STYLE_CONFIG["accent_color"])], foreground=[('selected', 'white')])
-
-    style.configure('Accent.TButton', background=STYLE_CONFIG["accent_color"], foreground='white')
-    style.map('Accent.TButton', background=[('active', STYLE_CONFIG["accent_color"])])
-    style.configure('Danger.TButton', background=STYLE_CONFIG["danger_color"], foreground='white')
-    style.map('Danger.TButton', background=[('active', STYLE_CONFIG["danger_color"])])
-    style.configure('Success.TButton', background=STYLE_CONFIG["success_color"], foreground='white')
-    style.map('Success.TButton', background=[('active', STYLE_CONFIG["success_color"])])
+    style.configure('TButton', 
+                   font=STYLE_CONFIG["font_normal"],
+                   background=STYLE_CONFIG["button_default_bg"],
+                   foreground=STYLE_CONFIG["button_default_fg"],
+                   borderwidth=0,
+                   focuscolor='none',
+                   padding=(12, 8))
+    style.map('TButton', 
+             background=[('active', STYLE_CONFIG["accent_hover"]),
+                        ('pressed', STYLE_CONFIG["accent_color"])])
     
-    style.configure('TButton', padding=6)
-    style.configure('TEntry', padding=5)
-    style.configure('TCombobox', padding=5)
-    style.configure('TSpinbox', padding=5)
-
+    # Özel buton stilleri
+    style.configure('Accent.TButton',
+                   background=STYLE_CONFIG["accent_color"],
+                   foreground='white',
+                   font=STYLE_CONFIG["font_bold"])
+    style.map('Accent.TButton',
+             background=[('active', STYLE_CONFIG["accent_hover"]),
+                        ('pressed', STYLE_CONFIG["accent_color"])])
+    
+    style.configure('Success.TButton',
+                   background=STYLE_CONFIG["success_color"],
+                   foreground='white')
+    style.map('Success.TButton',
+             background=[('active', '#218838')])
+    
+    style.configure('Danger.TButton',
+                   background=STYLE_CONFIG["danger_color"],
+                   foreground='white')
+    style.map('Danger.TButton',
+             background=[('active', '#C82333')])
+    
+    # Frame stilleri
+    style.configure('TFrame', 
+                   background=STYLE_CONFIG["bg_color"],
+                   relief='flat')
+    
+    style.configure('Card.TFrame',
+                   background=STYLE_CONFIG["bg_card"],
+                   relief='solid',
+                   borderwidth=1)
+    
+    # Entry ve Combobox
+    style.configure('TEntry',
+                   fieldbackground=STYLE_CONFIG["bg_secondary"],
+                   borderwidth=1,
+                   relief='solid',
+                   padding=8)
+    
+    style.configure('TCombobox',
+                   fieldbackground=STYLE_CONFIG["bg_secondary"],
+                   borderwidth=1,
+                   relief='solid',
+                   padding=8)
+    
+    # Treeview
+    style.configure('Treeview',
+                   background=STYLE_CONFIG["bg_secondary"],
+                   fieldbackground=STYLE_CONFIG["bg_secondary"],
+                   foreground=STYLE_CONFIG["text_primary"],
+                   rowheight=28,
+                   borderwidth=1,
+                   relief='solid')
+    style.configure('Treeview.Heading',
+                   background=STYLE_CONFIG["bg_color"],
+                   foreground=STYLE_CONFIG["text_primary"],
+                   font=STYLE_CONFIG["font_bold"],
+                   relief='flat',
+                   borderwidth=1)
+    style.map('Treeview',
+             background=[('selected', STYLE_CONFIG["accent_color"])],
+             foreground=[('selected', 'white')])
+    
+    # Notebook
+    style.configure('TNotebook',
+                   background=STYLE_CONFIG["bg_color"],
+                   borderwidth=0)
+    style.configure('TNotebook.Tab',
+                   background=STYLE_CONFIG["bg_color"],
+                   foreground=STYLE_CONFIG["text_secondary"],
+                   padding=[12, 8],
+                   font=STYLE_CONFIG["font_normal"])
+    style.map('TNotebook.Tab',
+             background=[('selected', STYLE_CONFIG["accent_color"]),
+                        ('active', STYLE_CONFIG["accent_light"])],
+             foreground=[('selected', 'white'),
+                        ('active', STYLE_CONFIG["accent_color"])])
+    
+    # LabelFrame
+    style.configure('TLabelframe',
+                   background=STYLE_CONFIG["bg_color"],
+                   borderwidth=1,
+                   relief='solid',
+                   bordercolor=STYLE_CONFIG["border_color"])
+    style.configure('TLabelframe.Label',
+                   background=STYLE_CONFIG["bg_color"],
+                   foreground=STYLE_CONFIG["text_primary"],
+                   font=STYLE_CONFIG["font_bold"])
 
 class BaseWindow(tk.Toplevel):
-    """Tüm pencereler için temel şablonu (header, main, footer) oluşturan sınıf."""
-    def __init__(self, master, title, geometry):
+    """Modern ve tutarlı pencere tasarımı için temel sınıf."""
+    
+    def __init__(self, master, title, geometry, resizable=False):
         super().__init__(master)
         self.title(title)
         self.geometry(geometry)
+        self.resizable(resizable, resizable)
         self.configure(bg=STYLE_CONFIG["bg_color"])
-        self.overrideredirect(True) # Pencerenin başlık çubuğunu kaldır
-
-        # Pencereyi ortala (geometry set edildikten sonra)
-        self.update_idletasks() # Geometry uygulandıktan sonra boyutları alabilmek için
+        
+        # Modern görünüm için başlık çubuğunu kaldır
+        self.overrideredirect(True)
+        
+        # Pencereyi ortala
+        self.update_idletasks()
         self.center_window()
-
-        # Sürükleme için değişkenler
+        
+        # Sürükleme değişkenleri
         self._drag_start_x = 0
         self._drag_start_y = 0
-
-        # --- Ana Yerleşim Alanları ---
-        # Tüm Frame'ler için ttk.Frame kullanıyoruz ve padding'i style üzerinden yönetiyoruz.
-        self.header_frame = ttk.Frame(self, style='TFrame', height=40) 
-        self.main_frame = ttk.Frame(self, style='TFrame', padding=(15,15)) 
-        self.footer_frame = ttk.Frame(self, style='TFrame', height=45) 
         
-        # Header frame'i koyu renk yap
+        # Modern pencere yapısı
+        self._create_window_structure(title)
+        
+        # Gölge efekti (Windows 10+ için)
+        try:
+            self.attributes('-topmost', False)
+            self.lift()
+        except:
+            pass
+
+    def _create_window_structure(self, title):
+        """Modern pencere yapısını oluşturur."""
+        # Ana container
+        self.main_container = ttk.Frame(self, style='TFrame')
+        self.main_container.pack(fill='both', expand=True, padx=1, pady=1)
+        
+        # Header (başlık çubuğu)
+        self.header_frame = ttk.Frame(self.main_container, style='TFrame', height=50)
+        self.header_frame.pack(fill='x', side='top')
+        self.header_frame.pack_propagate(False)
         self.header_frame.configure(style='Header.TFrame')
         
-        self.header_frame.pack(fill='x', side='top')
-        self.main_frame.pack(fill='both', expand=True)
-        self.footer_frame.pack(fill='x', side='bottom')
-        self.footer_frame.pack_propagate(False) # Footer'ın boyutunu korumak için
-
-        # Header için özel stil
+        # Header stillendirme
         style = ttk.Style()
-        style.configure('Header.TFrame', background=STYLE_CONFIG["header_bg"])
-
-        # Sürükleme olaylarını başlık çubuğuna bağla
+        style.configure('Header.TFrame',
+                       background=STYLE_CONFIG["header_bg"],
+                       relief='flat')
+        
+        # İçerik alanı
+        self.content_frame = ttk.Frame(self.main_container, style='TFrame')
+        self.content_frame.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Footer
+        self.footer_frame = ttk.Frame(self.main_container, style='TFrame', height=60)
+        self.footer_frame.pack(fill='x', side='bottom')
+        self.footer_frame.pack_propagate(False)
+        
+        # Header içeriği
+        self._populate_header(title)
+        
+        # Sürükleme olayları
         self.header_frame.bind("<ButtonPress-1>", self.start_drag)
         self.header_frame.bind("<B1-Motion>", self.do_drag)
 
-        self.populate_header(title)
+    def _populate_header(self, title):
+        """Modern header tasarımı."""
+        # Sol taraf - Logo ve başlık
+        left_frame = ttk.Frame(self.header_frame, style='Header.TFrame')
+        left_frame.pack(side='left', fill='y', expand=True)
         
-        # Başlık çubuğundaki standart kapatma butonu
-        self.header_close_button = Button(self.header_frame, text="✕", command=self.destroy,
-                                   bg=STYLE_CONFIG["header_bg"], fg=STYLE_CONFIG["header_fg"],
-                                   relief='flat', font=("Segoe UI Symbol", 10), 
-                                   activebackground=STYLE_CONFIG['danger_color'], activeforeground='white',
-                                   bd=0, highlightthickness=0)
-        self.header_close_button.pack(side='right', padx=10, pady=5)
+        # Logo (32x32 PNG gerekli - assets/logo.png)
+        try:
+            logo_image = Image.open(resource_path("logo.png")).resize((28, 28), Image.Resampling.LANCZOS)
+            self.logo_photo = ImageTk.PhotoImage(logo_image)
+            logo_label = Label(left_frame, image=self.logo_photo, 
+                              bg=STYLE_CONFIG["header_bg"], bd=0)
+            logo_label.pack(side='left', padx=(15, 8), pady=11)
+            
+            # Logo sürükleme
+            logo_label.bind("<ButtonPress-1>", self.start_drag)
+            logo_label.bind("<B1-Motion>", self.do_drag)
+        except Exception as e:
+            logging.warning(f"Logo yüklenemedi: {e}")
+        
+        # Başlık
+        title_label = Label(left_frame, text=title, 
+                           font=STYLE_CONFIG["font_title"],
+                           bg=STYLE_CONFIG["header_bg"], 
+                           fg=STYLE_CONFIG["header_fg"],
+                           bd=0)
+        title_label.pack(side='left', pady=11)
+        title_label.bind("<ButtonPress-1>", self.start_drag)
+        title_label.bind("<B1-Motion>", self.do_drag)
+        
+        # Sağ taraf - Kontroller
+        right_frame = ttk.Frame(self.header_frame, style='Header.TFrame')
+        right_frame.pack(side='right', fill='y')
+        
+        # Minimize butonu (opsiyonel)
+        self.minimize_btn = self._create_header_button(right_frame, "─", self.minimize_window)
+        self.minimize_btn.pack(side='right', padx=2, pady=8)
+        
+        # Kapat butonu
+        self.close_btn = self._create_header_button(right_frame, "✕", self.destroy, danger=True)
+        self.close_btn.pack(side='right', padx=(2, 12), pady=8)
 
+    def _create_header_button(self, parent, text, command, danger=False):
+        """Header için özel buton."""
+        if danger:
+            bg_color = STYLE_CONFIG["header_bg"]
+            hover_color = STYLE_CONFIG["danger_color"]
+            fg_color = STYLE_CONFIG["text_secondary"]
+        else:
+            bg_color = STYLE_CONFIG["header_bg"]
+            hover_color = STYLE_CONFIG["accent_light"]
+            fg_color = STYLE_CONFIG["text_secondary"]
+            
+        btn = Button(parent, text=text, command=command,
+                    bg=bg_color, fg=fg_color,
+                    font=("Segoe UI", 9), bd=0, relief='flat',
+                    width=3, height=1,
+                    activebackground=hover_color,
+                    activeforeground='white' if danger else STYLE_CONFIG["accent_color"])
+        
+        # Hover efektleri
+        def on_enter(e):
+            btn.configure(bg=hover_color, 
+                         fg='white' if danger else STYLE_CONFIG["accent_color"])
+        
+        def on_leave(e):
+            btn.configure(bg=bg_color, fg=fg_color)
+        
+        btn.bind("<Enter>", on_enter)
+        btn.bind("<Leave>", on_leave)
+        
+        return btn
+
+    def minimize_window(self):
+        """Pencereyi simge durumuna küçült."""
+        self.iconify()
 
     def start_drag(self, event):
         self._drag_start_x = event.x
@@ -151,191 +339,356 @@ class BaseWindow(tk.Toplevel):
         y = self.winfo_y() + event.y - self._drag_start_y
         self.geometry(f"+{x}+{y}")
 
-    def populate_header(self, title):
-        """Varsayılan başlık bölümünü logo, başlık ve özel kapatma düğmesi ile doldurur."""
-        # Logo
-        try:
-            logo_image = Image.open(resource_path("logo.png")).resize((25, 25), Image.Resampling.LANCZOS)
-            self.logo_photo = ImageTk.PhotoImage(logo_image)
-            logo_label = Label(self.header_frame, image=self.logo_photo, bg=STYLE_CONFIG["header_bg"])
-            logo_label.pack(side='left', padx=(10,5), pady=5)
-            logo_label.bind("<ButtonPress-1>", self.start_drag)
-            logo_label.bind("<B1-Motion>", self.do_drag)
-        except Exception as e:
-            logging.warning(f"Logo yüklenemedi: {e}") 
-            pass 
-
-        title_label = Label(self.header_frame, text=title, font=STYLE_CONFIG["font_title"], bg=STYLE_CONFIG["header_bg"], fg=STYLE_CONFIG["header_fg"])
-        title_label.pack(side='left', pady=5)
-        title_label.bind("<ButtonPress-1>", self.start_drag)
-        title_label.bind("<B1-Motion>", self.do_drag)
-        
     def center_window(self):
-        """Pencereyi ekranın ortasında açar."""
+        """Pencereyi ekranın ortasına yerleştirir."""
+        self.update_idletasks()
         width = self.winfo_width()
         height = self.winfo_height()
         
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
         
-        x = (screen_width // 2) - (width // 2)
-        y = (screen_height // 2) - (height // 2)
+        x = (screen_width - width) // 2
+        y = (screen_height - height) // 2
+        
         self.geometry(f'{width}x{height}+{x}+{y}')
 
-    # Alt sınıflar eğer footer'a ek bir kapatma butonu isterse bu metodu çağırabilirler.
-    def add_footer_close_button(self):
-        ttk.Button(self.footer_frame, text="Kapat", command=self.destroy,
-                   style='Danger.TButton').pack(side='right', padx=15, pady=10)
+    def add_action_buttons(self, buttons_config):
+        """Footer'a eylem butonları ekler."""
+        for btn_config in buttons_config:
+            btn = ttk.Button(self.footer_frame, 
+                           text=btn_config.get('text', 'Button'),
+                           command=btn_config.get('command', lambda: None),
+                           style=btn_config.get('style', 'TButton'))
+            btn.pack(side='right', padx=8, pady=15)
 
-    # _create_widgets metodu alt sınıflar tarafından doldurulacak.
-    def _create_widgets(self):
-        pass
-
-
-class WelcomeWindow(BaseWindow): 
+class WelcomeWindow(BaseWindow):
+    """Hoş geldin penceresi - modern tasarım."""
+    
     def __init__(self, master, on_close_callback):
-        super().__init__(master, "Kognita'ya Hoş Geldiniz!", "500x350")
+        super().__init__(master, "Kognita'ya Hoş Geldiniz", "520x400")
         self.master = master
         self.on_close_callback = on_close_callback
-        self.resizable(False, False)
-        self.grab_set() # Ana pencereyi bloke et (modal)
-        self.protocol("WM_DELETE_WINDOW", self._on_closing) # Kapatma butonuna basıldığında
-
-
-        self._create_widgets()
+        self.grab_set()
+        self.protocol("WM_DELETE_WINDOW", self._on_closing)
+        
+        self._create_welcome_content()
         self.lift()
-        self.attributes('-topmost', True) # Her zaman en üstte kal
+        self.attributes('-topmost', True)
         self.focus_force()
 
-
-    def _create_widgets(self):
-        # Header ve Footer BaseWindow'da oluşturuldu. İçerik main_frame içine yerleştirilecek.
-        ttk.Label(self.main_frame, text="Kognita'ya Hoş Geldiniz!", font=STYLE_CONFIG["font_title"]).pack(pady=10)
-        ttk.Label(self.main_frame, text="Dijital Ayak İzinizi Keşfetmek ve Verimliliğinizi Artırmak İçin Hazır Olun!", 
-                  wraplength=400, justify=tk.CENTER, font=STYLE_CONFIG["font_normal"]).pack(pady=5)
-        ttk.Label(self.main_frame, text="Uygulama arka planda çalışarak bilgisayar kullanım alışkanlıklarınızı takip edecek ve size özel raporlar sunacaktır.", 
-                  wraplength=400, justify=tk.CENTER, font=STYLE_CONFIG["font_normal"]).pack(pady=5)
-        ttk.Label(self.main_frame, text="Başlamak için 'Devam Et' butonuna tıklayın.", 
-                  wraplength=400, justify=tk.CENTER, font=STYLE_CONFIG["font_normal"]).pack(pady=10)
+    def _create_welcome_content(self):
+        """Hoş geldin içeriği."""
+        # Ana içerik alanı
+        content = ttk.Frame(self.content_frame, style='Card.TFrame')
+        content.pack(fill='both', expand=True, padx=20, pady=20)
         
-        # 'Devam Et' butonu footer'da olacak
-        ttk.Button(self.footer_frame, text="Devam Et", command=self._on_closing, 
-                   style='Accent.TButton').pack(pady=10)
+        # Üst alan - Logo ve başlık
+        top_frame = ttk.Frame(content, style='TFrame')
+        top_frame.pack(fill='x', pady=(30, 20))
+        
+        # Büyük logo (64x64 PNG gerekli - assets/welcome_logo.png)
+        try:
+            welcome_logo = Image.open(resource_path("welcome_logo.png")).resize((64, 64), Image.Resampling.LANCZOS)
+            self.welcome_logo_photo = ImageTk.PhotoImage(welcome_logo)
+            logo_label = Label(top_frame, image=self.welcome_logo_photo, 
+                              bg=STYLE_CONFIG["bg_card"], bd=0)
+            logo_label.pack(pady=(0, 15))
+        except Exception as e:
+            logging.warning(f"Welcome logo yüklenemedi: {e}")
+        
+        # Ana başlık
+        title_label = Label(content, text="Kognita'ya Hoş Geldiniz!",
+                           font=("Segoe UI Light", 24, "bold"),
+                           bg=STYLE_CONFIG["bg_card"],
+                           fg=STYLE_CONFIG["accent_color"])
+        title_label.pack(pady=(0, 10))
+        
+        # Alt başlık
+        subtitle_label = Label(content, 
+                              text="Dijital Yaşamınızı Optimize Edin",
+                              font=STYLE_CONFIG["font_h2"],
+                              bg=STYLE_CONFIG["bg_card"],
+                              fg=STYLE_CONFIG["text_secondary"])
+        subtitle_label.pack(pady=(0, 20))
+        
+        # Açıklama metni
+        desc_text = """Kognita, bilgisayar kullanım alışkanlıklarınızı akıllıca analiz eder ve size kişiselleştirilmiş öneriler sunar.
 
+• Detaylı kullanım raporları
+• Akıllı hedef belirleme sistemi  
+• Odaklanma modu ve bildirimler
+• Kategori bazlı analiz ve takip"""
+        
+        desc_label = Label(content, text=desc_text,
+                          font=STYLE_CONFIG["font_normal"],
+                          bg=STYLE_CONFIG["bg_card"],
+                          fg=STYLE_CONFIG["text_primary"],
+                          justify='left')
+        desc_label.pack(pady=(0, 30), padx=30)
+        
+        # Başlat butonu
+        start_btn = ttk.Button(content, text="Kognita'yı Başlat",
+                              command=self._on_closing,
+                              style='Accent.TButton')
+        start_btn.pack(pady=20)
 
     def _on_closing(self):
-        self.grab_release() # Modalı kaldır
+        self.grab_release()
         self.on_close_callback()
         self.destroy()
 
-class ReportWindow(BaseWindow): 
+class ReportWindow(BaseWindow):
+    """Geliştirilmiş rapor penceresi."""
+    
     def __init__(self, master=None):
-        super().__init__(master, "Kognita - Rapor ve Analiz", "900x700")
-        self.resizable(False, False)
-        self.current_report_range = "today" 
-
-        self._create_widgets()
+        super().__init__(master, "Kognita - Analiz ve Raporlar", "1000x750", resizable=True)
+        self.current_report_range = "today"
+        
+        self._create_report_interface()
         self._load_report_data()
-        # Footer'a özel bir kapatma butonu eklemek istersek:
-        self.add_footer_close_button() 
+        
+        # Footer butonları
+        self.add_action_buttons([
+            {'text': 'Kapat', 'command': self.destroy, 'style': 'TButton'}
+        ])
 
-    def _create_widgets(self):
-        # Header ve Footer BaseWindow'da oluşturuldu. İçerik main_frame içine yerleştirilecek.
-        top_controls_frame = ttk.Frame(self.main_frame) 
-        top_controls_frame.pack(pady=10, fill=tk.X)
-
-        ttk.Label(top_controls_frame, text="Rapor Aralığı:", font=STYLE_CONFIG["font_bold"]).pack(side=tk.LEFT, padx=5)
+    def _create_report_interface(self):
+        """Modern rapor arayüzü."""
+        # Üst kontrol paneli
+        control_panel = ttk.Frame(self.content_frame, style='Card.TFrame')
+        control_panel.pack(fill='x', pady=(0, 15))
+        
+        # İç padding
+        control_inner = ttk.Frame(control_panel, style='TFrame')
+        control_inner.pack(fill='x', padx=20, pady=15)
+        
+        # Sol taraf - Rapor aralığı
+        left_controls = ttk.Frame(control_inner, style='TFrame')
+        left_controls.pack(side='left', fill='x', expand=True)
+        
+        ttk.Label(left_controls, text="Rapor Aralığı:",
+                 font=STYLE_CONFIG["font_bold"]).pack(side='left', padx=(0, 8))
         
         self.range_var = StringVar(self)
-        self.range_var.set(self.current_report_range) 
+        range_options = [
+            ("Bugün", "today"),
+            ("Son 7 Gün", "last_7_days"), 
+            ("Bu Hafta", "this_week"),
+            ("Bu Ay", "this_month"),
+            ("Tüm Zamanlar", "all_time")
+        ]
         
-        range_options_display = ["Bugün", "Son 7 Gün", "Bu Hafta", "Bu Ay", "Tüm Zamanlar"]
-        range_options_values = ["today", "last_7_days", "this_week", "this_month", "all_time"]
+        self.range_combobox = ttk.Combobox(left_controls, textvariable=self.range_var,
+                                          values=[opt[0] for opt in range_options],
+                                          state="readonly", width=15)
+        self.range_combobox.set("Bugün")
+        self.range_combobox.pack(side='left', padx=(0, 15))
+        self.range_combobox.bind("<<ComboboxSelected>>", self._on_range_change)
         
-        initial_display_value = range_options_display[range_options_values.index(self.current_report_range)]
+        self.range_mapping = dict(range_options)
+        self.reverse_range_mapping = {v: k for k, v in range_options}
         
-        self.range_combobox = ttk.Combobox(top_controls_frame, textvariable=self.range_var, 
-                                            values=range_options_display, state="readonly", font=STYLE_CONFIG["font_normal"])
-        self.range_combobox.set(initial_display_value)
-        self.range_combobox.pack(side=tk.LEFT, padx=5)
-        self.range_combobox.bind("<<ComboboxSelected>>", self._on_range_change_wrapper)
+        # Sağ taraf - Dışa aktarma butonları
+        right_controls = ttk.Frame(control_inner, style='TFrame')
+        right_controls.pack(side='right')
         
-        self.range_var_map = dict(zip(range_options_display, range_options_values))
-        self.range_value_map = dict(zip(range_options_values, range_options_display))
-
-
-        ttk.Button(top_controls_frame, text="Verileri Dışa Aktar (CSV)", command=self._export_data).pack(side=tk.RIGHT, padx=5)
-        ttk.Button(top_controls_frame, text="Raporu Dışa Aktar (PDF)", command=self._export_pdf_report).pack(side=tk.RIGHT, padx=5) 
-
-        self.report_content_frame = ttk.Frame(self.main_frame) 
-        self.report_content_frame.pack(expand=True, fill=tk.BOTH, pady=10)
-
-        # persona_label ve total_duration_label burada oluşturulmalıydı. Düzeltildi.
-        self.persona_label = ttk.Label(self.report_content_frame, text="", font=STYLE_CONFIG["font_bold"])
-        self.persona_label.pack(pady=5)
-
-        self.total_duration_label = ttk.Label(self.report_content_frame, text="", font=STYLE_CONFIG["font_normal"])
-        self.total_duration_label.pack(pady=2)
-
-        self.notebook = ttk.Notebook(self.report_content_frame)
-        self.notebook.pack(expand=True, fill=tk.BOTH, pady=10)
-
-        self.category_tab = ttk.Frame(self.notebook) 
-        self.notebook.add(self.category_tab, text="Kategori Detayları")
-        self._create_category_table(self.category_tab)
-
+        ttk.Button(right_controls, text="CSV Dışa Aktar",
+                  command=self._export_data).pack(side='right', padx=5)
+        
         if MATPLOTLIB_AVAILABLE:
-            self.pie_chart_tab = ttk.Frame(self.notebook)
-            self.notebook.add(self.pie_chart_tab, text="Kategori Dağılımı (Pasta)")
-            self.pie_chart_canvas = None 
-
-            self.weekly_comp_tab = ttk.Frame(self.notebook)
-            self.notebook.add(self.weekly_comp_tab, text="Haftalık Karşılaştırma")
-            self.weekly_chart_canvas = None
-
-            self.hourly_activity_tab = ttk.Frame(self.notebook)
-            self.notebook.add(self.hourly_activity_tab, text="Saatlik Aktivite")
-            self.hourly_chart_canvas = None
-            
-            self.other_analysis_tab = ttk.Frame(self.notebook)
-            self.notebook.add(self.other_analysis_tab, text="Diğer Analizler")
-            self._create_other_analysis_widgets(self.other_analysis_tab)
-
-            self.app_trend_tab = ttk.Frame(self.notebook)
-            self.notebook.add(self.app_trend_tab, text="Uygulama Trendleri")
-            self._create_app_trend_widgets(self.app_trend_tab)
-
-            self.suggestions_tab = ttk.Frame(self.notebook)
-            self.notebook.add(self.suggestions_tab, text="Öneriler")
-            self._create_suggestions_widgets(self.suggestions_tab)
-
-        else:
-            messagebox.showwarning("Grafik Uyarısı", "Matplotlib kütüphanesi yüklenemedi. Grafik ve bazı analiz tabları gösterilmeyecektir.", parent=self)
-
-
-    def _create_category_table(self, parent_frame):
-        self.tree = ttk.Treeview(parent_frame, columns=("category", "duration", "percentage"), show="headings")
-        self.tree.heading("category", text="Kategori")
-        self.tree.heading("duration", text="Harcanan Süre")
-        self.tree.heading("percentage", text="Yüzde")
-
-        self.tree.column("category", width=200, anchor="w")
-        self.tree.column("duration", width=150, anchor="center")
-        self.tree.column("percentage", width=100, anchor="e")
-
-        scrollbar = ttk.Scrollbar(parent_frame, orient="vertical", command=self.tree.yview)
-        self.tree.configure(yscrollcommand=scrollbar.set)
+            ttk.Button(right_controls, text="PDF Rapor",
+                      command=self._export_pdf_report,
+                      style='Accent.TButton').pack(side='right', padx=5)
         
-        self.tree.pack(side=tk.LEFT, expand=True, fill=tk.BOTH, padx=5, pady=5)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        # Özet bilgi paneli
+        self.summary_frame = ttk.LabelFrame(self.content_frame, text="Özet Bilgiler", 
+                                           style='TLabelframe')
+        self.summary_frame.pack(fill='x', pady=(0, 15))
+        
+        summary_inner = ttk.Frame(self.summary_frame, style='TFrame')
+        summary_inner.pack(fill='x', padx=15, pady=10)
+        
+        self.persona_label = ttk.Label(summary_inner, text="Kullanıcı profili hesaplanıyor...",
+                                      font=STYLE_CONFIG["font_bold"],
+                                      foreground=STYLE_CONFIG["accent_color"])
+        self.persona_label.pack(anchor='w', pady=(0, 5))
+        
+        self.total_duration_label = ttk.Label(summary_inner, text="Toplam süre hesaplanıyor...",
+                                             font=STYLE_CONFIG["font_normal"])
+        self.total_duration_label.pack(anchor='w')
+        
+        # Ana içerik alanı - Notebook
+        self.notebook = ttk.Notebook(self.content_frame)
+        self.notebook.pack(expand=True, fill='both')
+        
+        # Sekmeler
+        self._create_category_tab()
+        
+        if MATPLOTLIB_AVAILABLE:
+            self._create_charts_tab()
+            self._create_analysis_tab()
+            self._create_trends_tab()
+            self._create_suggestions_tab()
 
-    def _on_range_change_wrapper(self, event):
-        selected_display_value = self.range_combobox.get()
-        self.current_report_range = self.range_var_map.get(selected_display_value, "today")
+    def _create_category_tab(self):
+        """Kategori detayları sekmesi."""
+        self.category_tab = ttk.Frame(self.notebook, style='TFrame')
+        self.notebook.add(self.category_tab, text="📊 Kategori Detayları")
+        
+        # Treeview container
+        tree_frame = ttk.Frame(self.category_tab, style='TFrame')
+        tree_frame.pack(fill='both', expand=True, padx=15, pady=15)
+        
+        # Modern treeview
+        self.category_tree = ttk.Treeview(tree_frame, 
+                                         columns=("category", "duration", "percentage", "sessions"),
+                                         show="headings", height=15)
+        
+        # Sütun başlıkları ve genişlikleri
+        self.category_tree.heading("category", text="Kategori")
+        self.category_tree.heading("duration", text="Toplam Süre")  
+        self.category_tree.heading("percentage", text="Yüzde")
+        self.category_tree.heading("sessions", text="Oturum Sayısı")
+        
+        self.category_tree.column("category", width=200, anchor="w")
+        self.category_tree.column("duration", width=120, anchor="center")
+        self.category_tree.column("percentage", width=80, anchor="center")
+        self.category_tree.column("sessions", width=100, anchor="center")
+        
+        # Scrollbar
+        tree_scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", 
+                                      command=self.category_tree.yview)
+        self.category_tree.configure(yscrollcommand=tree_scrollbar.set)
+        
+        self.category_tree.pack(side='left', fill='both', expand=True)
+        tree_scrollbar.pack(side='right', fill='y')
+
+    def _create_charts_tab(self):
+        """Grafikler sekmesi."""
+        self.charts_tab = ttk.Frame(self.notebook, style='TFrame')
+        self.notebook.add(self.charts_tab, text="📈 Grafikler")
+        
+        # Grafik container'ı
+        chart_container = ttk.Frame(self.charts_tab, style='TFrame')
+        chart_container.pack(fill='both', expand=True, padx=15, pady=15)
+        
+        # Grafik notebook
+        self.chart_notebook = ttk.Notebook(chart_container)
+        self.chart_notebook.pack(fill='both', expand=True)
+        
+        # Alt sekmeler
+        self.pie_chart_frame = ttk.Frame(self.chart_notebook, style='TFrame')
+        self.chart_notebook.add(self.pie_chart_frame, text="Pasta Grafik")
+        
+        self.bar_chart_frame = ttk.Frame(self.chart_notebook, style='TFrame')
+        self.chart_notebook.add(self.bar_chart_frame, text="Sütun Grafik")
+        
+        self.hourly_chart_frame = ttk.Frame(self.chart_notebook, style='TFrame')
+        self.chart_notebook.add(self.hourly_chart_frame, text="Saatlik Aktivite")
+        
+        # Grafik canvas'ları için placeholder'lar
+        self.pie_chart_canvas = None
+        self.bar_chart_canvas = None  
+        self.hourly_chart_canvas = None
+
+    def _create_analysis_tab(self):
+        """Analiz sekmesi."""
+        self.analysis_tab = ttk.Frame(self.notebook, style='TFrame')
+        self.notebook.add(self.analysis_tab, text="🔍 Detaylı Analiz")
+        
+        # İçerik alanı
+        analysis_content = ttk.Frame(self.analysis_tab, style='TFrame')
+        analysis_content.pack(fill='both', expand=True, padx=15, pady=15)
+        
+        # Günlük ortalamalar
+        avg_frame = ttk.LabelFrame(analysis_content, text="Son 7 Günlük Ortalamalar",
+                                  style='TLabelframe')
+        avg_frame.pack(fill='x', pady=(0, 15))
+        
+        self.avg_tree = ttk.Treeview(avg_frame, columns=("category", "avg_duration"),
+                                    show="headings", height=6)
+        self.avg_tree.heading("category", text="Kategori")
+        self.avg_tree.heading("avg_duration", text="Günlük Ortalama")
+        self.avg_tree.column("category", width=200)
+        self.avg_tree.column("avg_duration", width=150)
+        self.avg_tree.pack(fill='x', padx=10, pady=10)
+        
+        # En verimli gün
+        productive_frame = ttk.LabelFrame(analysis_content, text="Verimlilik Analizi",
+                                         style='TLabelframe')
+        productive_frame.pack(fill='x')
+        
+        self.productive_label = ttk.Label(productive_frame, text="Analiz ediliyor...",
+                                         font=STYLE_CONFIG["font_normal"])
+        self.productive_label.pack(padx=15, pady=15)
+
+    def _create_trends_tab(self):
+        """Trendler sekmesi."""
+        self.trends_tab = ttk.Frame(self.notebook, style='TFrame')
+        self.notebook.add(self.trends_tab, text="📉 Uygulama Trendleri")
+        
+        # Kontrol paneli
+        trend_control = ttk.Frame(self.trends_tab, style='TFrame')
+        trend_control.pack(fill='x', padx=15, pady=15)
+        
+        ttk.Label(trend_control, text="Uygulama Seçin:",
+                 font=STYLE_CONFIG["font_bold"]).pack(side='left', padx=(0, 10))
+        
+        self.trend_app_var = StringVar()
+        self.trend_app_combo = ttk.Combobox(trend_control, textvariable=self.trend_app_var,
+                                           state="readonly", width=30)
+        self.trend_app_combo.pack(side='left', padx=(0, 10))
+        self.trend_app_combo.bind("<<ComboboxSelected>>", self._load_app_trend)
+        
+        # Grafik alanı
+        self.trend_chart_frame = ttk.Frame(self.trends_tab, style='TFrame')
+        self.trend_chart_frame.pack(fill='both', expand=True, padx=15)
+        
+        self.trend_chart_canvas = None
+
+    def _create_suggestions_tab(self):
+        """Öneriler sekmesi."""
+        self.suggestions_tab = ttk.Frame(self.notebook, style='TFrame')
+        self.notebook.add(self.suggestions_tab, text="💡 Kişisel Öneriler")
+        
+        # İçerik alanı
+        suggestions_content = ttk.Frame(self.suggestions_tab, style='TFrame')
+        suggestions_content.pack(fill='both', expand=True, padx=15, pady=15)
+        
+        # Başlık
+        title_label = ttk.Label(suggestions_content, 
+                               text="Size Özel Öneriler",
+                               font=STYLE_CONFIG["font_h2"])
+        title_label.pack(pady=(0, 15))
+        
+        # Öneriler text widget
+        suggestions_frame = ttk.Frame(suggestions_content, style='Card.TFrame')
+        suggestions_frame.pack(fill='both', expand=True)
+        
+        self.suggestions_text = tk.Text(suggestions_frame, wrap=tk.WORD, 
+                                       font=STYLE_CONFIG["font_normal"],
+                                       bg=STYLE_CONFIG["bg_card"],
+                                       fg=STYLE_CONFIG["text_primary"],
+                                       relief='flat', bd=0,
+                                       padx=20, pady=20)
+        self.suggestions_text.pack(fill='both', expand=True, padx=1, pady=1)
+        
+        # Scrollbar
+        suggestions_scroll = ttk.Scrollbar(suggestions_frame, orient="vertical",
+                                          command=self.suggestions_text.yview)
+        self.suggestions_text.configure(yscrollcommand=suggestions_scroll.set)
+        suggestions_scroll.pack(side='right', fill='y')
+
+    def _on_range_change(self, event=None):
+        """Rapor aralığı değiştiğinde."""
+        selected_display = self.range_combobox.get()
+        self.current_report_range = self.range_mapping.get(selected_display, "today")
         self._load_report_data()
 
     def _get_date_range(self, selection):
-        today = datetime.datetime.now() 
+        """Seçime göre tarih aralığını döndürür."""
+        today = datetime.datetime.now()
         start_date = None
         end_date = today
 
@@ -350,1156 +703,3915 @@ class ReportWindow(BaseWindow):
         elif selection == "this_month":
             start_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         elif selection == "all_time":
-            start_date = datetime.datetime(2020, 1, 1) 
-            end_date = today 
+            start_date = datetime.datetime(2020, 1, 1)
 
         end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
-
         return start_date, end_date
-    
+
     def _load_report_data(self):
-        start_date, end_date = self._get_date_range(self.current_report_range)
-        category_totals, total_duration = analyzer.get_analysis_data(start_date, end_date)
+        """Rapor verilerini yükler."""
+        try:
+            start_date, end_date = self._get_date_range(self.current_report_range)
+            category_totals, total_duration = analyzer.get_analysis_data(start_date, end_date)
 
-        persona_text, table_data = reporter.get_report_data(category_totals, total_duration)
-        self.persona_label.config(text=persona_text)
-        self.total_duration_label.config(text=f"Toplam Aktif Süre: {reporter.format_duration(total_duration)}")
+            # Özet bilgileri güncelle
+            persona_text, table_data = reporter.get_report_data(category_totals, total_duration)
+            self.persona_label.config(text=persona_text)
+            self.total_duration_label.config(text=f"Toplam Aktif Süre: {reporter.format_duration(total_duration)}")
 
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-        
+            # Kategori tablosunu güncelle
+            self._update_category_table(table_data, category_totals)
+
+            # Grafikleri güncelle
+            if MATPLOTLIB_AVAILABLE:
+                self._update_charts(category_totals, total_duration)
+                self._update_analysis_data()
+                self._update_trends_data()
+                self._update_suggestions(category_totals, total_duration)
+
+        except Exception as e:
+            logging.error(f"Rapor verileri yüklenirken hata: {e}")
+            messagebox.showerror("Hata", f"Veriler yüklenirken bir hata oluştu: {e}", parent=self)
+
+    def _update_category_table(self, table_data, category_totals):
+        """Kategori tablosunu günceller."""
+        # Mevcut verileri temizle
+        for item in self.category_tree.get_children():
+            self.category_tree.delete(item)
+
         if table_data:
-            for row in table_data:
-                self.tree.insert("", "end", values=row)
+            for i, row in enumerate(table_data):
+                # Oturum sayısını hesapla (basit yaklaşım)
+                category_name = row[0]
+                sessions = len(database.get_sessions_for_category(category_name)) if hasattr(database, 'get_sessions_for_category') else "-"
+                
+                # Satırı ekle
+                self.category_tree.insert("", "end", values=(row[0], row[1], row[2], sessions))
+                
+                # Renklendirme (alternatif satırlar)
+                if i % 2 == 0:
+                    self.category_tree.set(self.category_tree.get_children()[-1], "category", row[0])
         else:
-            self.tree.insert("", "end", values=("Veri Yok", "", ""))
-        
-        if MATPLOTLIB_AVAILABLE:
-            self._draw_pie_chart(category_totals, total_duration)
-            self._draw_weekly_comparison_chart()
-            self._draw_hourly_activity_chart()
-            self._load_other_analysis_data()
-            self._load_app_trend_data()
-            self._load_suggestions_data(category_totals, total_duration) 
+            self.category_tree.insert("", "end", values=("Veri Yok", "", "", ""))
+
+    def _update_charts(self, category_totals, total_duration):
+        """Grafikleri günceller."""
+        self._draw_pie_chart(category_totals, total_duration)
+        self._draw_bar_chart(category_totals, total_duration)
+        self._draw_hourly_chart()
 
     def _draw_pie_chart(self, category_totals, total_duration):
+        """Pasta grafiği çizer."""
         if self.pie_chart_canvas:
             self.pie_chart_canvas.get_tk_widget().destroy()
             self.pie_chart_canvas = None
 
         labels, sizes = reporter.get_chart_data(category_totals, total_duration)
 
-        if not labels:
-            ttk.Label(self.pie_chart_tab, text="Bu aralıkta pasta grafik için yeterli veri yok.", font=STYLE_CONFIG["font_normal"]).pack(pady=20)
+        if not labels or not sizes:
+            no_data_label = ttk.Label(self.pie_chart_frame, 
+                                     text="Bu aralık için yeterli veri bulunmuyor.",
+                                     font=STYLE_CONFIG["font_normal"])
+            no_data_label.pack(expand=True)
             return
 
-        fig = Figure(figsize=(6, 6), dpi=100)
-        fig.patch.set_facecolor(STYLE_CONFIG['bg_color'])
+        # Modern grafik stili
+        fig = Figure(figsize=(8, 6), dpi=100, facecolor=STYLE_CONFIG["bg_card"])
         ax = fig.add_subplot(111)
-        ax.set_facecolor(STYLE_CONFIG['bg_color'])
+        ax.set_facecolor(STYLE_CONFIG["bg_card"])
+
+        # Modern renkler
+        colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F']
         
-        wedges, texts, autotexts = ax.pie(sizes, autopct='%1.1f%%', shadow=False, startangle=90, pctdistance=0.85, colors=plt.cm.Paired.colors)
-        ax.axis('equal') 
-        ax.set_title("Kategoriye Göre Süre Dağılımı", fontname='Segoe UI', fontsize=12, fontweight='bold', color='black')
-        ax.legend(wedges, labels, title="Kategoriler", loc="center left", bbox_to_anchor=(1, 0, 0.5, 1), frameon=False, fontsize=9, title_fontsize=10)
-        
+        wedges, texts, autotexts = ax.pie(sizes, labels=labels, autopct='%1.1f%%',
+                                         colors=colors[:len(labels)], startangle=90,
+                                         textprops={'fontsize': 10, 'color': STYLE_CONFIG["text_primary"]})
+
+        # Başlık
+        ax.set_title('Kategori Dağılımı', fontsize=14, fontweight='bold', 
+                    color=STYLE_CONFIG["text_primary"], pad=20)
+
+        # Yüzde metinlerini beyaz yap
         for autotext in autotexts:
             autotext.set_color('white')
-            autotext.set_fontsize(8)
+            autotext.set_fontweight('bold')
 
-        fig.tight_layout() 
+        fig.tight_layout()
 
-        self.pie_chart_canvas = FigureCanvasTkAgg(fig, master=self.pie_chart_tab)
+        self.pie_chart_canvas = FigureCanvasTkAgg(fig, master=self.pie_chart_frame)
         self.pie_chart_canvas.draw()
-        self.pie_chart_canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+        self.pie_chart_canvas.get_tk_widget().pack(fill='both', expand=True)
 
-        plt.close(fig) 
+    def _draw_bar_chart(self, category_totals, total_duration):
+        """Sütun grafiği çizer."""
+        if self.bar_chart_canvas:
+            self.bar_chart_canvas.get_tk_widget().destroy()
+            self.bar_chart_canvas = None
 
-    def _draw_weekly_comparison_chart(self):
-        if self.weekly_chart_canvas:
-            self.weekly_chart_canvas.get_tk_widget().destroy()
-            self.weekly_chart_canvas = None
-        
-        comparison_data = analyzer.get_weekly_comparison()
-        
-        if not comparison_data:
-            ttk.Label(self.weekly_comp_tab, text="Haftalık karşılaştırma için yeterli veri yok (Bu hafta veya geçen hafta kullanım).", font=STYLE_CONFIG["font_normal"]).pack(pady=20)
+        if not category_totals:
+            no_data_label = ttk.Label(self.bar_chart_frame,
+                                     text="Bu aralık için yeterli veri bulunmuyor.",
+                                     font=STYLE_CONFIG["font_normal"])
+            no_data_label.pack(expand=True)
             return
 
-        categories = list(comparison_data.keys())
-        this_week_times = [comparison_data[cat]['this_week'] for cat in categories]
-        last_week_times = [comparison_data[cat]['last_week'] for cat in categories]
+        # Verileri hazırla
+        categories = list(category_totals.keys())[:8]  # İlk 8 kategori
+        durations = [category_totals[cat] / 60 for cat in categories]  # Dakikaya çevir
 
-        fig = Figure(figsize=(8, 5), dpi=100)
-        fig.patch.set_facecolor(STYLE_CONFIG['bg_color'])
+        fig = Figure(figsize=(10, 6), dpi=100, facecolor=STYLE_CONFIG["bg_card"])
         ax = fig.add_subplot(111)
-        ax.set_facecolor(STYLE_CONFIG['bg_color'])
+        ax.set_facecolor(STYLE_CONFIG["bg_card"])
+
+        # Modern sütun grafiği
+        bars = ax.bar(categories, durations, color=STYLE_CONFIG["accent_color"], alpha=0.8)
+
+        # Stil düzenlemeleri
+        ax.set_xlabel('Kategoriler', fontsize=12, color=STYLE_CONFIG["text_primary"])
+        ax.set_ylabel('Süre (Dakika)', fontsize=12, color=STYLE_CONFIG["text_primary"])
+        ax.set_title('Kategori Bazlı Kullanım Süreleri', fontsize=14, fontweight='bold',
+                    color=STYLE_CONFIG["text_primary"], pad=20)
+
+        # X ekseni etiketlerini döndür
+        plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
         
-        x = range(len(categories))
-        width = 0.35
+        # Grid ekle
+        ax.grid(True, alpha=0.3, axis='y')
+        ax.set_axisbelow(True)
 
-        ax.bar([i - width/2 for i in x], this_week_times, width, label='Bu Hafta', color=STYLE_CONFIG["accent_color"])
-        ax.bar([i + width/2 for i in x], last_week_times, width, label='Geçen Hafta', color=STYLE_CONFIG["danger_color"])
+        # Renkleri ayarla
+        ax.tick_params(colors=STYLE_CONFIG["text_primary"])
+        ax.spines['bottom'].set_color(STYLE_CONFIG["border_color"])
+        ax.spines['left'].set_color(STYLE_CONFIG["border_color"])
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
 
-        ax.set_ylabel('Süre (Dakika)', fontname='Segoe UI', color='black')
-        ax.set_title('En Çok Kullanılan Kategorilerin Haftalık Karşılaştırması', fontname='Segoe UI', fontsize=12, fontweight='bold', color='black')
-        ax.set_xticks(x)
-        ax.set_xticklabels(categories, rotation=45, ha="right", fontname='Segoe UI', color='black')
-        ax.tick_params(axis='y', colors='black') 
-        ax.legend(prop={'family': 'Segoe UI', 'size': 9}, frameon=False)
-        fig.tight_layout() 
+        fig.tight_layout()
 
-        self.weekly_chart_canvas = FigureCanvasTkAgg(fig, master=self.weekly_comp_tab)
-        self.weekly_chart_canvas.draw()
-        self.weekly_chart_canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
-        plt.close(fig)
+        self.bar_chart_canvas = FigureCanvasTkAgg(fig, master=self.bar_chart_frame)
+        self.bar_chart_canvas.draw()
+        self.bar_chart_canvas.get_tk_widget().pack(fill='both', expand=True)
 
-    def _draw_hourly_activity_chart(self):
+    def _draw_hourly_chart(self):
+        """Saatlik aktivite grafiği çizer."""
         if self.hourly_chart_canvas:
             self.hourly_chart_canvas.get_tk_widget().destroy()
             self.hourly_chart_canvas = None
 
-        hourly_data = analyzer.get_hourly_activity()
-        
-        if not hourly_data:
-            ttk.Label(self.hourly_activity_tab, text="Saatlik aktivite grafiği için yeterli veri yok.", font=STYLE_CONFIG["font_normal"]).pack(pady=20)
-            return
-
-        hours = sorted(hourly_data.keys())
-        durations = [hourly_data[h] / 60 for h in hours] 
-
-        fig = Figure(figsize=(9, 5), dpi=100)
-        fig.patch.set_facecolor(STYLE_CONFIG['bg_color'])
-        ax = fig.add_subplot(111)
-        ax.set_facecolor(STYLE_CONFIG['bg_color'])
-
-        ax.bar(hours, durations, color=STYLE_CONFIG["accent_color"])
-        ax.set_xlabel('Saat Aralığı (0-23)', fontname='Segoe UI', color='black')
-        ax.set_ylabel('Ortalama Süre (Dakika)', fontname='Segoe UI', color='black')
-        ax.set_title('Son 7 Günlük Ortalama Saatlik Aktivite', fontname='Segoe UI', fontsize=12, fontweight='bold', color='black')
-        ax.set_xticks(range(24))
-        ax.tick_params(axis='x', colors='black')
-        ax.tick_params(axis='y', colors='black')
-        ax.grid(axis='y', linestyle='--', alpha=0.7)
-        fig.tight_layout()
-
-        self.hourly_chart_canvas = FigureCanvasTkAgg(fig, master=self.hourly_activity_tab)
-        self.hourly_chart_canvas.draw()
-        self.hourly_chart_canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
-        plt.close(fig)
-
-    def _create_other_analysis_widgets(self, parent_frame):
-        daily_avg_frame = ttk.LabelFrame(parent_frame, text="Son 7 Günlük Kategori Ortalama Kullanım", padding=10)
-        daily_avg_frame.pack(fill=tk.X, padx=10, pady=10)
-
-        self.daily_avg_tree = ttk.Treeview(daily_avg_frame, columns=("category", "average_duration"), show="headings")
-        self.daily_avg_tree.heading("category", text="Kategori")
-        self.daily_avg_tree.heading("average_duration", text="Günlük Ortalama Süre")
-        self.daily_avg_tree.column("category", width=200, anchor="w")
-        self.daily_avg_tree.column("average_duration", width=200, anchor="center")
-        self.daily_avg_tree.pack(fill=tk.BOTH, expand=True)
-
-        productive_day_frame = ttk.LabelFrame(parent_frame, text="En Verimli Gün (Son 30 Gün)", padding=10)
-        productive_day_frame.pack(fill=tk.X, padx=10, pady=10)
-
-        self.productive_day_label = ttk.Label(productive_day_frame, text="", font=STYLE_CONFIG["font_normal"])
-        self.productive_day_label.pack(pady=5)
-
-
-    def _load_other_analysis_data(self):
-        for item in self.daily_avg_tree.get_children():
-            self.daily_avg_tree.delete(item)
-        
-        daily_avg_data = analyzer.get_daily_average_usage_by_category(num_days=7)
-        if daily_avg_data:
-            sorted_data = sorted(daily_avg_data.items(), key=lambda item: item[1], reverse=True)
-            for category, duration in sorted_data:
-                self.daily_avg_tree.insert("", "end", values=(category, reporter.format_duration(duration)))
-        else:
-            self.daily_avg_tree.insert("", "end", values=("Veri Yok", ""))
-
-        most_productive_day, max_time = analyzer.get_most_productive_day()
-        if most_productive_day != "Yeterli Veri Yok":
-            self.productive_day_label.config(text=f"En verimli gününüz: {most_productive_day} (Toplam verimli süre: {reporter.format_duration(max_time)})")
-        else:
-            self.productive_day_label.config(text="En verimli gün verisi için yeterli aktif kullanım yok.")
-    
-    def _create_app_trend_widgets(self, parent_frame):
-        top_frame = ttk.Frame(parent_frame, padding=10)
-        top_frame.pack(fill=tk.X)
-
-        ttk.Label(top_frame, text="Uygulama Seç:", font=STYLE_CONFIG["font_bold"]).pack(side=tk.LEFT, padx=5)
-        self.app_trend_process_var = StringVar()
-        
-        self.app_trend_process_combobox = ttk.Combobox(top_frame, textvariable=self.app_trend_process_var, state="readonly", font=STYLE_CONFIG["font_normal"])
-        self.app_trend_process_combobox.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
-        self.app_trend_process_combobox['values'] = sorted(database.get_all_processes())
-        if self.app_trend_process_combobox['values']:
-            self.app_trend_process_combobox.set(self.app_trend_process_combobox['values'][0])
-        self.app_trend_process_combobox.bind("<<ComboboxSelected>>", self._load_app_trend_data)
-
-        self.app_trend_chart_canvas = None
-
-    def _load_app_trend_data(self, event=None):
-        if self.app_trend_chart_canvas:
-            self.app_trend_chart_canvas.get_tk_widget().destroy()
-            self.app_trend_chart_canvas = None
-
-        selected_process = self.app_trend_process_var.get()
-        if not selected_process:
-            ttk.Label(self.app_trend_tab, text="Lütfen trendini görmek istediğiniz bir uygulama seçin.", font=STYLE_CONFIG["font_normal"]).pack(pady=20)
-            return
-
-        app_usage_data = analyzer.get_app_usage_over_time(selected_process, num_days=30)
-        
-        if not app_usage_data:
-            ttk.Label(self.app_trend_tab, text=f"'{selected_process}' için son 30 güne ait kullanım verisi bulunamadı.", font=STYLE_CONFIG["font_normal"]).pack(pady=20)
-            return
-
-        all_dates = []
-        current_date = (datetime.datetime.now() - datetime.timedelta(days=29)).replace(hour=0, minute=0, second=0, microsecond=0)
-        while current_date <= datetime.datetime.now():
-            all_dates.append(current_date.strftime('%Y-%m-%d'))
-            current_date += datetime.timedelta(days=1)
-
-        durations_minutes = [app_usage_data.get(d, 0) / 60 for d in all_dates] 
-
-        fig = Figure(figsize=(10, 5), dpi=100)
-        fig.patch.set_facecolor(STYLE_CONFIG['bg_color'])
-        ax = fig.add_subplot(111)
-        ax.set_facecolor(STYLE_CONFIG['bg_color'])
-
-        ax.plot(all_dates, durations_minutes, marker='o', linestyle='-', color=STYLE_CONFIG["accent_color"])
-        ax.set_xlabel('Tarih', fontname='Segoe UI', color='black')
-        ax.set_ylabel('Süre (Dakika)', fontname='Segoe UI', color='black')
-        ax.set_title(f"'{selected_process}' Uygulaması Günlük Kullanım Trendi (Son 30 Gün)", fontname='Segoe UI', fontsize=12, fontweight='bold', color='black')
-        ax.tick_params(axis='x', rotation=45, colors='black')
-        ax.tick_params(axis='y', colors='black')
-        if len(all_dates) > 10:
-            ax.set_xticks(all_dates[::len(all_dates)//5]) 
-        ax.grid(True, linestyle='--', alpha=0.6)
-        fig.tight_layout()
-
-        self.app_trend_chart_canvas = FigureCanvasTkAgg(fig, master=self.app_trend_tab)
-        self.app_trend_chart_canvas.draw()
-        self.app_trend_chart_canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
-        plt.close(fig)
-
-    def _create_suggestions_widgets(self, parent_frame):
-        self.suggestions_label_frame = ttk.LabelFrame(parent_frame, text="Kişiselleştirilmiş Öneriler", padding=10)
-        self.suggestions_label_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
-        self.suggestions_text = tk.Text(self.suggestions_label_frame, wrap=tk.WORD, height=10, font=STYLE_CONFIG["font_normal"], bg=STYLE_CONFIG["bg_color"], fg='black', relief=tk.FLAT)
-        self.suggestions_text.pack(fill=tk.BOTH, expand=True)
-        self.suggestions_text.config(state=tk.DISABLED) 
-
-    def _load_suggestions_data(self, category_totals, total_duration):
-        self.suggestions_text.config(state=tk.NORMAL)
-        self.suggestions_text.delete(1.0, tk.END) 
-        
-        suggestions = analyzer.get_user_suggestions(category_totals, total_duration)
-        for i, suggestion in enumerate(suggestions):
-            self.suggestions_text.insert(tk.END, f"• {suggestion}\n\n")
-        
-        self.suggestions_text.config(state=tk.DISABLED) 
-
-
-    def _export_data(self):
-        file_path = filedialog.asksaveasfilename(
-            defaultextension=".csv",
-            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
-            title="Verileri Dışa Aktar (CSV)"
-        )
-        if file_path:
-            success, error = database.export_all_data_to_csv(file_path)
-            if success:
-                messagebox.showinfo("Başarılı", f"Veriler '{file_path}' konumuna başarıyla dışa aktarıldı.", parent=self)
-            else:
-                messagebox.showerror("Hata", f"Veri dışa aktarılırken bir hata oluştu: {error}", parent=self)
-
-    def _export_pdf_report(self):
-        if not MATPLOTLIB_AVAILABLE:
-            messagebox.showerror("Hata", "PDF dışa aktarma için 'ReportLab' kütüphanesi gereklidir.", parent=self)
-            return
-
-        file_path = filedialog.asksaveasfilename(
-            defaultextension=".pdf",
-            filetypes=[("PDF files", "*.pdf"), ("All files", "*.*")],
-            title="Raporu Dışa Aktar (PDF)"
-        )
-        if file_path:
-            start_date, end_date = self._get_date_range(self.current_report_range)
-            success, error = reporter.create_pdf_report(file_path, start_date, end_date) 
-            if success:
-                messagebox.showinfo("Başarılı", f"PDF raporu '{file_path}' konumuna başarıyla oluşturuldu.", parent=self)
-            else:
-                messagebox.showerror("Hata", f"PDF raporu oluşturulurken bir hata oluştu: {error}", parent=self)
-
-
-class GoalsWindow(BaseWindow): 
-    def __init__(self, master=None):
-        super().__init__(master, "Kognita - Hedefleri Yönet", "700x550") 
-        self.resizable(False, False)
-
-        self._create_widgets()
-        self._load_goals()
-        self.add_footer_close_button()
-
-
-    def _create_widgets(self):
-        add_frame = ttk.LabelFrame(self.main_frame, text="Yeni Hedef Ekle/Güncelle", padding=10)
-        add_frame.pack(pady=10, padx=5, fill=tk.X) 
-
-        add_frame.grid_columnconfigure(1, weight=1) 
-
-        ttk.Label(add_frame, text="Hedef Tipi:", font=STYLE_CONFIG["font_normal"]).grid(row=0, column=0, padx=5, pady=5, sticky="w")
-        self.goal_type_var = StringVar()
-        self.goal_type_combobox = ttk.Combobox(add_frame, textvariable=self.goal_type_var, 
-                                                values=["min_usage", "max_usage", "block", "time_window_max"], 
-                                                state="readonly", font=STYLE_CONFIG["font_normal"])
-        self.goal_type_combobox.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
-        self.goal_type_combobox.set("max_usage") 
-        self.goal_type_combobox.bind("<<ComboboxSelected>>", self._on_goal_type_change)
-
-        self.dynamic_fields_frame = ttk.Frame(add_frame) 
-        self.dynamic_fields_frame.grid(row=1, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
-        self.dynamic_fields_frame.grid_columnconfigure(1, weight=1)
-
-        self._create_dynamic_goal_fields() 
-
-        ttk.Button(add_frame, text="Hedef Ekle/Güncelle", command=self._add_or_update_goal, 
-                   style='Accent.TButton').grid(row=10, column=0, columnspan=2, pady=10) 
-
-        list_frame = ttk.LabelFrame(self.main_frame, text="Mevcut Hedefler", padding=10)
-        list_frame.pack(pady=10, padx=5, fill=tk.BOTH, expand=True) 
-
-        self.goals_tree = ttk.Treeview(list_frame, columns=("id", "type", "target", "limit", "time_window"), show="headings")
-        self.goals_tree.heading("type", text="Tip")
-        self.goals_tree.heading("target", text="Hedef (Kategori/Uyg.)")
-        self.goals_tree.heading("limit", text="Süre Limiti (Dk)")
-        self.goals_tree.heading("time_window", text="Zaman Aralığı")
-        
-        self.goals_tree.column("id", width=0, stretch=tk.NO) 
-        self.goals_tree.column("type", width=100, anchor="w")
-        self.goals_tree.column("target", width=180, anchor="w")
-        self.goals_tree.column("limit", width=120, anchor="center")
-        self.goals_tree.column("time_window", width=150, anchor="center")
-
-        scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.goals_tree.yview)
-        self.goals_tree.configure(yscrollcommand=scrollbar.set)
-        
-        self.goals_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        ttk.Button(self.footer_frame, text="Seçili Hedefi Sil", command=self._delete_goal, 
-                   style='Danger.TButton').pack(pady=10, padx=15, side=tk.RIGHT) 
-        
-    def _create_dynamic_goal_fields(self):
-        for widget in self.dynamic_fields_frame.winfo_children():
-            widget.destroy()
-
-        goal_type = self.goal_type_var.get()
-
-        if goal_type in ['min_usage', 'max_usage']:
-            ttk.Label(self.dynamic_fields_frame, text="Kategori:", font=STYLE_CONFIG["font_normal"]).grid(row=0, column=0, padx=5, pady=5, sticky="w")
-            self.category_for_goal_var = StringVar()
-            self.category_for_goal_combobox = ttk.Combobox(self.dynamic_fields_frame, textvariable=self.category_for_goal_var, state="readonly", font=STYLE_CONFIG["font_normal"])
-            self.category_for_goal_combobox.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
-            self.category_for_goal_combobox['values'] = database.get_all_categories()
-            if self.category_for_goal_combobox['values']:
-                self.category_for_goal_combobox.set(self.category_for_goal_combobox['values'][0])
-
-            ttk.Label(self.dynamic_fields_frame, text="Süre (Dakika):", font=STYLE_CONFIG["font_normal"]).grid(row=1, column=0, padx=5, pady=5, sticky="w")
-            self.time_limit_entry = ttk.Entry(self.dynamic_fields_frame, font=STYLE_CONFIG["font_normal"])
-            self.time_limit_entry.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
-        
-        elif goal_type == 'block':
-            ttk.Label(self.dynamic_fields_frame, text="Uygulama Adı:", font=STYLE_CONFIG["font_normal"]).grid(row=0, column=0, padx=5, pady=5, sticky="w")
-            self.process_name_for_goal_var = StringVar()
-            self.process_name_for_goal_combobox = ttk.Combobox(self.dynamic_fields_frame, textvariable=self.process_name_for_goal_var, font=STYLE_CONFIG["font_normal"])
-            self.process_name_for_goal_combobox.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
-            self.process_name_for_goal_combobox['values'] = database.get_all_processes() 
-            if self.process_name_for_goal_combobox['values']:
-                self.process_name_for_goal_combobox.set(self.process_name_for_goal_combobox['values'][0])
-
-            ttk.Label(self.dynamic_fields_frame, text="Engellenecek (Sürekli Takip Edilir)", font=STYLE_CONFIG["font_normal"]).grid(row=1, column=0, columnspan=2, padx=5, pady=5, sticky="w")
+        try:
+            hourly_data = analyzer.get_hourly_activity()
             
-        elif goal_type == 'time_window_max':
-            ttk.Label(self.dynamic_fields_frame, text="Kategori:", font=STYLE_CONFIG["font_normal"]).grid(row=0, column=0, padx=5, pady=5, sticky="w")
-            self.category_for_goal_var = StringVar()
-            self.category_for_goal_combobox = ttk.Combobox(self.dynamic_fields_frame, textvariable=self.category_for_goal_var, state="readonly", font=STYLE_CONFIG["font_normal"])
-            self.category_for_goal_combobox.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
-            self.category_for_goal_combobox['values'] = database.get_all_categories()
-            if self.category_for_goal_combobox['values']:
-                self.category_for_goal_combobox.set(self.category_for_goal_combobox['values'][0])
+            if not hourly_data:
+                no_data_label = ttk.Label(self.hourly_chart_frame,
+                                         text="Saatlik aktivite için yeterli veri bulunmuyor.",
+                                         font=STYLE_CONFIG["font_normal"])
+                no_data_label.pack(expand=True)
+                return
 
-            ttk.Label(self.dynamic_fields_frame, text="Zaman Aralığı (HH:MM - HH:MM):", font=STYLE_CONFIG["font_normal"]).grid(row=1, column=0, padx=5, pady=5, sticky="w")
-            time_frame = ttk.Frame(self.dynamic_fields_frame) 
-            time_frame.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
+            hours = list(range(24))
+            durations = [hourly_data.get(h, 0) / 60 for h in hours]  # Dakikaya çevir
 
-            self.start_time_hour_var = StringVar(value="09")
-            self.start_time_min_var = StringVar(value="00")
-            self.end_time_hour_var = StringVar(value="17")
-            self.end_time_min_var = StringVar(value="00")
+            fig = Figure(figsize=(12, 6), dpi=100, facecolor=STYLE_CONFIG["bg_card"])
+            ax = fig.add_subplot(111)
+            ax.set_facecolor(STYLE_CONFIG["bg_card"])
 
-            ttk.Spinbox(time_frame, from_=0, to=23, textvariable=self.start_time_hour_var, width=3, format="%02.0f", font=STYLE_CONFIG["font_normal"]).pack(side=tk.LEFT)
-            ttk.Label(time_frame, text=":", font=STYLE_CONFIG["font_normal"]).pack(side=tk.LEFT)
-            ttk.Spinbox(time_frame, from_=0, to=59, textvariable=self.start_time_min_var, width=3, format="%02.0f", font=STYLE_CONFIG["font_normal"]).pack(side=tk.LEFT)
-            ttk.Label(time_frame, text=" - ", font=STYLE_CONFIG["font_normal"]).pack(side=tk.LEFT)
-            ttk.Spinbox(time_frame, from_=0, to=23, textvariable=self.end_time_hour_var, width=3, format="%02.0f", font=STYLE_CONFIG["font_normal"]).pack(side=tk.LEFT)
-            ttk.Label(time_frame, text=":", font=STYLE_CONFIG["font_normal"]).pack(side=tk.LEFT)
-            ttk.Spinbox(time_frame, from_=0, to=59, textvariable=self.end_time_min_var, width=3, format="%02.0f", font=STYLE_CONFIG["font_normal"]).pack(side=tk.LEFT)
+            # Line chart
+            ax.plot(hours, durations, color=STYLE_CONFIG["accent_color"], linewidth=2, marker='o', markersize=4)
+            ax.fill_between(hours, durations, alpha=0.3, color=STYLE_CONFIG["accent_color"])
 
-            ttk.Label(self.dynamic_fields_frame, text="Maks. Süre (Dakika):", font=STYLE_CONFIG["font_normal"]).grid(row=2, column=0, padx=5, pady=5, sticky="w")
-            self.time_limit_entry = ttk.Entry(self.dynamic_fields_frame, font=STYLE_CONFIG["font_normal"])
-            self.time_limit_entry.grid(row=2, column=1, padx=5, pady=5, sticky="ew")
+            ax.set_xlabel('Saat', fontsize=12, color=STYLE_CONFIG["text_primary"])
+            ax.set_ylabel('Ortalama Süre (Dakika)', fontsize=12, color=STYLE_CONFIG["text_primary"])
+            ax.set_title('Günlük Saatlik Aktivite Dağılımı', fontsize=14, fontweight='bold',
+                        color=STYLE_CONFIG["text_primary"], pad=20)
 
-    def _on_goal_type_change(self, *args):
-        self._create_dynamic_goal_fields()
+            ax.set_xticks(range(0, 24, 2))
+            ax.grid(True, alpha=0.3)
+            ax.set_axisbelow(True)
 
-    def _load_goals(self):
-        for item in self.goals_tree.get_children():
-            self.goals_tree.delete(item)
-        
-        goals = database.get_goals()
-        for goal in goals:
-            target_str = goal['category'] if goal['category'] else goal['process_name'] if goal['process_name'] else "N/A"
-            limit_str = f"{goal['time_limit_minutes']} dk" if goal['time_limit_minutes'] is not None else "N/A"
-            time_window_str = f"{goal['start_time_of_day']}-{goal['end_time_of_day']}" if goal['start_time_of_day'] else "Tüm Gün"
-            
-            self.goals_tree.insert("", "end", iid=goal['id'], values=(
-                goal['goal_type'].replace('_', ' ').title(), 
-                target_str, 
-                limit_str, 
-                time_window_str
-            ))
+            # Renkleri ayarla
+            ax.tick_params(colors=STYLE_CONFIG["text_primary"])
+            ax.spines['bottom'].set_color(STYLE_CONFIG["border_color"])
+            ax.spines['left'].set_color(STYLE_CONFIG["border_color"])
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
 
-    def _add_or_update_goal(self):
-        goal_type = self.goal_type_var.get()
-        category = None
-        process_name = None
-        time_limit = None
-        start_time_of_day = None
-        end_time_of_day = None
+            fig.tight_layout()
+
+            self.hourly_chart_canvas = FigureCanvasTkAgg(fig, master=self.hourly_chart_frame)
+            self.hourly_chart_canvas.draw()
+            self.hourly_chart_canvas.get_tk_widget().pack(fill='both', expand=True)
+
+        except Exception as e:
+            logging.error(f"Saatlik grafik çizilirken hata: {e}")
+
+    def _update_analysis_data(self):
+        """Analiz sekmesi verilerini günceller."""
+        try:
+            # Günlük ortalamalar
+            for item in self.avg_tree.get_children():
+                self.avg_tree.delete(item)
+
+            daily_avg_data = analyzer.get_daily_average_usage_by_category(num_days=7)
+            if daily_avg_data:
+                sorted_data = sorted(daily_avg_data.items(), key=lambda item: item[1], reverse=True)
+                for category, duration in sorted_data[:10]:  # İlk 10 kategori
+                    formatted_duration = reporter.format_duration(duration)
+                    self.avg_tree.insert("", "end", values=(category, formatted_duration))
+            else:
+                self.avg_tree.insert("", "end", values=("Veri Yok", ""))
+
+            # En verimli gün
+            most_productive_day, max_time = analyzer.get_most_productive_day()
+            if most_productive_day != "Yeterli Veri Yok":
+                productive_text = f"En verimli gününüz: {most_productive_day}\nToplam verimli süre: {reporter.format_duration(max_time)}"
+            else:
+                productive_text = "En verimli gün analizi için yeterli veri bulunmuyor."
+                
+            self.productive_label.config(text=productive_text)
+
+        except Exception as e:
+            logging.error(f"Analiz verileri güncellenirken hata: {e}")
+
+    def _update_trends_data(self):
+        """Trendler sekmesi verilerini günceller."""
+        try:
+            # Uygulama listesini güncelle
+            all_processes = sorted(database.get_all_processes())
+            self.trend_app_combo['values'] = all_processes
+            if all_processes and not self.trend_app_var.get():
+                self.trend_app_combo.set(all_processes[0])
+                self._load_app_trend()
+
+        except Exception as e:
+            logging.error(f"Trend verileri güncellenirken hata: {e}")
+
+    def _load_app_trend(self, event=None):
+        """Seçili uygulamanın trend grafiğini yükler."""
+        if self.trend_chart_canvas:
+            self.trend_chart_canvas.get_tk_widget().destroy()
+            self.trend_chart_canvas = None
+
+        selected_app = self.trend_app_var.get()
+        if not selected_app:
+            return
 
         try:
-            if goal_type in ['min_usage', 'max_usage']:
-                category = self.category_for_goal_var.get()
-                time_limit_str = self.time_limit_entry.get()
-                if not category or not time_limit_str: raise ValueError("Kategori veya süre boş olamaz.")
-                time_limit = int(time_limit_str)
-                if time_limit <= 0: raise ValueError("Süre pozitif bir sayı olmalıdır.")
+            # Son 30 günlük veriyi al
+            trend_data = analyzer.get_app_usage_over_time(selected_app, num_days=30)
             
-            elif goal_type == 'block':
-                process_name = self.process_name_for_goal_var.get()
-                if not process_name: raise ValueError("Uygulama adı boş olamaz.")
+            if not trend_data:
+                no_data_label = ttk.Label(self.trend_chart_frame,
+                                         text=f"'{selected_app}' için trend verisi bulunmuyor.",
+                                         font=STYLE_CONFIG["font_normal"])
+                no_data_label.pack(expand=True)
+                return
+
+            # Tarihleri ve süreleri hazırla
+            dates = []
+            durations = []
             
-            elif goal_type == 'time_window_max':
-                category = self.category_for_goal_var.get()
-                start_h = self.start_time_hour_var.get()
-                start_m = self.start_time_min_var.get()
-                end_h = self.end_time_hour_var.get()
-                end_m = self.end_time_min_var.get()
-                time_limit_str = self.time_limit_entry.get()
+            # Son 30 günü oluştur
+            today = datetime.datetime.now()
+            for i in range(29, -1, -1):
+                date = today - datetime.timedelta(days=i)
+                date_str = date.strftime('%Y-%m-%d')
+                dates.append(date_str)
+                durations.append(trend_data.get(date_str, 0) / 60)  # Dakikaya çevir
 
-                if not category or not start_h or not start_m or not end_h or not end_m or not time_limit_str:
-                    raise ValueError("Tüm alanları doldurun.")
-                
-                start_time_of_day = f"{int(start_h):02d}:{int(start_m):02d}"
-                end_time_of_day = f"{int(end_h):02d}:{int(end_m):02d}"
-                time_limit = int(time_limit_str)
-                if time_limit <= 0: raise ValueError("Maksimum süre pozitif bir sayı olmalıdır.")
-                
-                start_dt = datetime.datetime.strptime(start_time_of_day, '%H:%M').time()
-                end_dt = datetime.datetime.strptime(end_time_of_day, '%H:%M').time()
-                if start_dt >= end_dt:
-                    messagebox.showwarning("Zaman Hatası", "Başlangıç saati bitiş saatinden önce olmalıdır.", parent=self)
-                    return
+            fig = Figure(figsize=(12, 6), dpi=100, facecolor=STYLE_CONFIG["bg_card"])
+            ax = fig.add_subplot(111)
+            ax.set_facecolor(STYLE_CONFIG["bg_card"])
 
-        except ValueError as e:
-            messagebox.showwarning("Geçersiz Giriş", f"Lütfen geçerli değerler girin: {e}", parent=self)
-            return
+            # Trend çizgisi
+            ax.plot(range(len(dates)), durations, color=STYLE_CONFIG["accent_color"], 
+                   linewidth=2, marker='o', markersize=3)
+            ax.fill_between(range(len(dates)), durations, alpha=0.3, color=STYLE_CONFIG["accent_color"])
+
+            ax.set_xlabel('Tarih', fontsize=12, color=STYLE_CONFIG["text_primary"])
+            ax.set_ylabel('Kullanım Süresi (Dakika)', fontsize=12, color=STYLE_CONFIG["text_primary"])
+            ax.set_title(f"'{selected_app}' - 30 Günlük Kullanım Trendi", fontsize=14, fontweight='bold',
+                        color=STYLE_CONFIG["text_primary"], pad=20)
+
+            # X ekseni etiketleri (her 5 günde bir)
+            ax.set_xticks(range(0, len(dates), 5))
+            ax.set_xticklabels([dates[i].split('-')[1] + '/' + dates[i].split('-')[2] for i in range(0, len(dates), 5)])
+
+            ax.grid(True, alpha=0.3)
+            ax.set_axisbelow(True)
+
+            # Renkleri ayarla
+            ax.tick_params(colors=STYLE_CONFIG["text_primary"])
+            ax.spines['bottom'].set_color(STYLE_CONFIG["border_color"])
+            ax.spines['left'].set_color(STYLE_CONFIG["border_color"])
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+
+            fig.tight_layout()
+
+            self.trend_chart_canvas = FigureCanvasTkAgg(fig, master=self.trend_chart_frame)
+            self.trend_chart_canvas.draw()
+            self.trend_chart_canvas.get_tk_widget().pack(fill='both', expand=True)
+
         except Exception as e:
-            logging.error(f"Hedef eklerken/güncellerken hata: {e}", exc_info=True)
-            messagebox.showerror("Hata", f"Beklenmedik bir hata oluştu: {e}", parent=self)
-            return
+            logging.error(f"Trend grafiği çizilirken hata: {e}")
 
-        database.add_goal(category, process_name, goal_type, time_limit, start_time_of_day, end_time_of_day)
-        messagebox.showinfo("Başarılı", "Hedef başarıyla eklendi/güncellendi.", parent=self)
-        self._load_goals() 
-        self._create_dynamic_goal_fields() 
+    def _update_suggestions(self, category_totals, total_duration):
+        """Öneriler sekmesini günceller."""
+        try:
+            self.suggestions_text.config(state=tk.NORMAL)
+            self.suggestions_text.delete(1.0, tk.END)
+
+            suggestions = analyzer.get_user_suggestions(category_totals, total_duration)
+            
+            if suggestions:
+                for i, suggestion in enumerate(suggestions, 1):
+                    self.suggestions_text.insert(tk.END, f"{i}. {suggestion}\n\n")
+            else:
+                self.suggestions_text.insert(tk.END, "Henüz yeterli veri toplanmadığı için öneri oluşturulamıyor. Lütfen birkaç gün daha kullanım verisi biriktirin.")
+
+            self.suggestions_text.config(state=tk.DISABLED)
+
+        except Exception as e:
+            logging.error(f"Öneriler güncellenirken hata: {e}")
+
+    def _export_data(self):
+        """Verileri CSV olarak dışa aktar."""
+        try:
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".csv",
+                filetypes=[("CSV dosyaları", "*.csv"), ("Tüm dosyalar", "*.*")],
+                title="Verileri CSV Olarak Kaydet"
+            )
+            
+            if file_path:
+                success, error = database.export_all_data_to_csv(file_path)
+                if success:
+                    messagebox.showinfo("Başarılı", f"Veriler '{file_path}' dosyasına kaydedildi.", parent=self)
+                else:
+                    messagebox.showerror("Hata", f"Dışa aktarma hatası: {error}", parent=self)
+                    
+        except Exception as e:
+            logging.error(f"CSV dışa aktarma hatası: {e}")
+            messagebox.showerror("Hata", f"Dışa aktarma sırasında hata oluştu: {e}", parent=self)
+
+    def _export_pdf_report(self):
+        """PDF rapor oluştur."""
+        try:
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".pdf",
+                filetypes=[("PDF dosyaları", "*.pdf"), ("Tüm dosyalar", "*.*")],
+                title="PDF Rapor Kaydet"
+            )
+            
+            if file_path:
+                start_date, end_date = self._get_date_range(self.current_report_range)
+                success, error = reporter.create_pdf_report(file_path, start_date, end_date)
+                
+                if success:
+                    messagebox.showinfo("Başarılı", f"PDF raporu '{file_path}' dosyasına kaydedildi.", parent=self)
+                else:
+                    messagebox.showerror("Hata", f"PDF oluşturma hatası: {error}", parent=self)
+                    
+        except Exception as e:
+            logging.error(f"PDF dışa aktarma hatası: {e}")
+            messagebox.showerror("Hata", f"PDF oluşturma sırasında hata oluştu: {e}", parent=self)
+
+class GoalsWindow(BaseWindow):
+    """Hedef yönetimi penceresi."""
+    
+    def __init__(self, master=None):
+        super().__init__(master, "Hedef Yönetimi", "750x600")
+        self._create_goals_interface()
+        self._load_goals()
+        
+        self.add_action_buttons([
+            {'text': 'Kapat', 'command': self.destroy, 'style': 'TButton'}
+        ])
+
+    def _create_goals_interface(self):
+        """Hedef yönetimi arayüzü."""
+        # Yeni hedef ekleme paneli
+        add_panel = ttk.LabelFrame(self.content_frame, text="Yeni Hedef Oluştur", 
+                                  style='TLabelframe')
+        add_panel.pack(fill='x', pady=(0, 20))
+        
+        add_content = ttk.Frame(add_panel, style='TFrame')
+        add_content.pack(fill='x', padx=15, pady=15)
+        
+        # Grid düzeni
+        add_content.grid_columnconfigure(1, weight=1)
+        
+        # Hedef tipi
+        ttk.Label(add_content, text="Hedef Tipi:", 
+                 font=STYLE_CONFIG["font_bold"]).grid(row=0, column=0, sticky='w', padx=(0, 10), pady=5)
+        
+        self.goal_type_var = StringVar(value="max_usage")
+        goal_types = [
+            ("Maksimum Kullanım", "max_usage"),
+            ("Minimum Kullanım", "min_usage"), 
+            ("Uygulama Engelleme", "block"),
+            ("Zaman Aralığı Limiti", "time_window_max")
+        ]
+        
+        self.goal_type_combo = ttk.Combobox(add_content, textvariable=self.goal_type_var,
+                                           values=[gt[0] for gt in goal_types],
+                                           state="readonly")
+        self.goal_type_combo.grid(row=0, column=1, sticky='ew', pady=5)
+        self.goal_type_combo.bind("<<ComboboxSelected>>", self._on_goal_type_change)
+        
+        self.goal_type_mapping = dict(goal_types)
+        
+        # Dinamik alanlar için frame
+        self.dynamic_frame = ttk.Frame(add_content, style='TFrame')
+        self.dynamic_frame.grid(row=1, column=0, columnspan=2, sticky='ew', pady=10)
+        self.dynamic_frame.grid_columnconfigure(1, weight=1)
+        
+        # Ekle butonu
+        ttk.Button(add_content, text="Hedef Ekle", command=self._add_goal,
+                  style='Accent.TButton').grid(row=2, column=0, columnspan=2, pady=15)
+        
+        # İlk yükleme
+        self._create_dynamic_fields()
+        
+        # Mevcut hedefler listesi
+        goals_panel = ttk.LabelFrame(self.content_frame, text="Mevcut Hedefler",
+                                    style='TLabelframe')
+        goals_panel.pack(fill='both', expand=True)
+        
+        goals_content = ttk.Frame(goals_panel, style='TFrame')
+        goals_content.pack(fill='both', expand=True, padx=15, pady=15)
+        
+        # Hedefler tablosu
+        self.goals_tree = ttk.Treeview(goals_content, 
+                                      columns=("type", "target", "limit", "time_window", "status"),
+                                      show="headings", height=10)
+        
+        self.goals_tree.heading("type", text="Tip")
+        self.goals_tree.heading("target", text="Hedef")
+        self.goals_tree.heading("limit", text="Limit")
+        self.goals_tree.heading("time_window", text="Zaman Aralığı")
+        self.goals_tree.heading("status", text="Durum")
+        
+        self.goals_tree.column("type", width=120)
+        self.goals_tree.column("target", width=150)
+        self.goals_tree.column("limit", width=100)
+        self.goals_tree.column("time_window", width=120)
+        self.goals_tree.column("status", width=80)
+        
+        # Scrollbar
+        goals_scroll = ttk.Scrollbar(goals_content, orient="vertical",
+                                    command=self.goals_tree.yview)
+        self.goals_tree.configure(yscrollcommand=goals_scroll.set)
+        
+        self.goals_tree.pack(side='left', fill='both', expand=True)
+        goals_scroll.pack(side='right', fill='y')
+        
+        # Sil butonu
+        delete_frame = ttk.Frame(goals_content, style='TFrame')
+        delete_frame.pack(fill='x', pady=(10, 0))
+        
+        ttk.Button(delete_frame, text="Seçili Hedefi Sil", command=self._delete_goal,
+                  style='Danger.TButton').pack(side='right')
+
+    def _create_dynamic_fields(self):
+        """Hedef tipine göre dinamik alanlar oluşturur."""
+        # Mevcut widget'ları temizle
+        for widget in self.dynamic_frame.winfo_children():
+            widget.destroy()
+            
+        goal_type = self.goal_type_var.get()
+        selected_type = self.goal_type_mapping.get(goal_type, "max_usage")
+        
+        if selected_type in ['min_usage', 'max_usage']:
+            # Kategori seçimi
+            ttk.Label(self.dynamic_frame, text="Kategori:",
+                     font=STYLE_CONFIG["font_bold"]).grid(row=0, column=0, sticky='w', padx=(0, 10), pady=5)
+            
+            self.category_var = StringVar()
+            self.category_combo = ttk.Combobox(self.dynamic_frame, textvariable=self.category_var,
+                                              state="readonly")
+            self.category_combo.grid(row=0, column=1, sticky='ew', pady=5)
+            
+            # Kategorileri yükle
+            categories = database.get_all_categories()
+            self.category_combo['values'] = categories
+            if categories:
+                self.category_combo.set(categories[0])
+            
+            # Süre limiti
+            ttk.Label(self.dynamic_frame, text="Süre Limiti (dakika):",
+                     font=STYLE_CONFIG["font_bold"]).grid(row=1, column=0, sticky='w', padx=(0, 10), pady=5)
+            
+            self.time_limit_var = StringVar()
+            self.time_limit_entry = ttk.Entry(self.dynamic_frame, textvariable=self.time_limit_var)
+            self.time_limit_entry.grid(row=1, column=1, sticky='ew', pady=5)
+            
+        elif selected_type == 'block':
+            # Uygulama seçimi
+            ttk.Label(self.dynamic_frame, text="Engellenecek Uygulama:",
+                     font=STYLE_CONFIG["font_bold"]).grid(row=0, column=0, sticky='w', padx=(0, 10), pady=5)
+            
+            self.process_var = StringVar()
+            self.process_combo = ttk.Combobox(self.dynamic_frame, textvariable=self.process_var)
+            self.process_combo.grid(row=0, column=1, sticky='ew', pady=5)
+            
+            # Uygulamaları yükle
+            processes = database.get_all_processes()
+            self.process_combo['values'] = processes
+            if processes:
+                self.process_combo.set(processes[0])
+                
+        elif selected_type == 'time_window_max':
+            # Kategori seçimi
+            ttk.Label(self.dynamic_frame, text="Kategori:",
+                     font=STYLE_CONFIG["font_bold"]).grid(row=0, column=0, sticky='w', padx=(0, 10), pady=5)
+            
+            self.category_var = StringVar()
+            self.category_combo = ttk.Combobox(self.dynamic_frame, textvariable=self.category_var,
+                                              state="readonly")
+            self.category_combo.grid(row=0, column=1, sticky='ew', pady=5)
+            
+            categories = database.get_all_categories()
+            self.category_combo['values'] = categories
+            if categories:
+                self.category_combo.set(categories[0])
+            
+            # Zaman aralığı
+            ttk.Label(self.dynamic_frame, text="Zaman Aralığı:",
+                     font=STYLE_CONFIG["font_bold"]).grid(row=1, column=0, sticky='w', padx=(0, 10), pady=5)
+            
+            time_frame = ttk.Frame(self.dynamic_frame, style='TFrame')
+            time_frame.grid(row=1, column=1, sticky='ew', pady=5)
+            
+            self.start_hour_var = StringVar(value="09")
+            self.start_min_var = StringVar(value="00")
+            self.end_hour_var = StringVar(value="17")
+            self.end_min_var = StringVar(value="00")
+            
+            ttk.Spinbox(time_frame, from_=0, to=23, textvariable=self.start_hour_var,
+                       width=3, format="%02.0f").pack(side='left', padx=2)
+            ttk.Label(time_frame, text=":").pack(side='left')
+            ttk.Spinbox(time_frame, from_=0, to=59, textvariable=self.start_min_var,
+                       width=3, format="%02.0f").pack(side='left', padx=2)
+            ttk.Label(time_frame, text=" - ").pack(side='left', padx=5)
+            ttk.Spinbox(time_frame, from_=0, to=23, textvariable=self.end_hour_var,
+                       width=3, format="%02.0f").pack(side='left', padx=2)
+            ttk.Label(time_frame, text=":").pack(side='left')
+            ttk.Spinbox(time_frame, from_=0, to=59, textvariable=self.end_min_var,
+                       width=3, format="%02.0f").pack(side='left', padx=2)
+            
+            # Süre limiti
+            ttk.Label(self.dynamic_frame, text="Maksimum Süre (dakika):",
+                     font=STYLE_CONFIG["font_bold"]).grid(row=2, column=0, sticky='w', padx=(0, 10), pady=5)
+            
+            self.time_limit_var = StringVar()
+            self.time_limit_entry = ttk.Entry(self.dynamic_frame, textvariable=self.time_limit_var)
+            self.time_limit_entry.grid(row=2, column=1, sticky='ew', pady=5)
+
+    def _on_goal_type_change(self, event=None):
+        """Hedef tipi değiştiğinde dinamik alanları günceller."""
+        self._create_dynamic_fields()
+
+    def _add_goal(self):
+        """Yeni hedef ekler."""
+        try:
+            goal_type_display = self.goal_type_var.get()
+            goal_type = self.goal_type_mapping.get(goal_type_display, "max_usage")
+            
+            category = None
+            process_name = None
+            time_limit = None
+            start_time = None
+            end_time = None
+            
+            if goal_type in ['min_usage', 'max_usage']:
+                category = self.category_var.get()
+                time_limit_str = self.time_limit_var.get()
+                
+                if not category or not time_limit_str:
+                    raise ValueError("Kategori ve süre limiti gereklidir.")
+                    
+                time_limit = int(time_limit_str)
+                if time_limit <= 0:
+                    raise ValueError("Süre limiti pozitif bir sayı olmalıdır.")
+                    
+            elif goal_type == 'block':
+                process_name = self.process_var.get()
+                if not process_name:
+                    raise ValueError("Engellenecek uygulama seçilmelidir.")
+                    
+            elif goal_type == 'time_window_max':
+                category = self.category_var.get()
+                time_limit_str = self.time_limit_var.get()
+                
+                if not category or not time_limit_str:
+                    raise ValueError("Kategori ve süre limiti gereklidir.")
+                    
+                time_limit = int(time_limit_str)
+                if time_limit <= 0:
+                    raise ValueError("Süre limiti pozitif bir sayı olmalıdır.")
+                
+                start_time = f"{int(self.start_hour_var.get()):02d}:{int(self.start_min_var.get()):02d}"
+                end_time = f"{int(self.end_hour_var.get()):02d}:{int(self.end_min_var.get()):02d}"
+                
+                # Zaman kontrolü
+                start_dt = datetime.datetime.strptime(start_time, '%H:%M').time()
+                end_dt = datetime.datetime.strptime(end_time, '%H:%M').time()
+                if start_dt >= end_dt:
+                    raise ValueError("Başlangıç zamanı bitiş zamanından önce olmalıdır.")
+            
+            # Hedefi veritabanına ekle
+            database.add_goal(category, process_name, goal_type, time_limit, start_time, end_time)
+            
+            messagebox.showinfo("Başarılı", "Hedef başarıyla eklendi.", parent=self)
+            self._load_goals()
+            self._clear_form()
+            
+        except ValueError as e:
+            messagebox.showwarning("Geçersiz Giriş", str(e), parent=self)
+        except Exception as e:
+            logging.error(f"Hedef eklenirken hata: {e}")
+            messagebox.showerror("Hata", f"Hedef eklenirken hata oluştu: {e}", parent=self)
+
+    def _clear_form(self):
+        """Formu temizler."""
+        try:
+            if hasattr(self, 'time_limit_var'):
+                self.time_limit_var.set("")
+        except:
+            pass
+
+    def _load_goals(self):
+        """Mevcut hedefleri yükler."""
+        try:
+            # Mevcut öğeleri temizle
+            for item in self.goals_tree.get_children():
+                self.goals_tree.delete(item)
+            
+            goals = database.get_goals()
+            for goal in goals:
+                # Tip çevirisi
+                type_display = {
+                    'max_usage': 'Maks. Kullanım',
+                    'min_usage': 'Min. Kullanım',
+                    'block': 'Engelleme',
+                    'time_window_max': 'Zaman Aralığı'
+                }.get(goal['goal_type'], goal['goal_type'])
+                
+                # Hedef (kategori veya uygulama)
+                target = goal['category'] or goal['process_name'] or "N/A"
+                
+                # Limit
+                limit = f"{goal['time_limit_minutes']} dk" if goal['time_limit_minutes'] else "N/A"
+                
+                # Zaman aralığı
+                time_window = "Tüm Gün"
+                if goal['start_time_of_day'] and goal['end_time_of_day']:
+                    time_window = f"{goal['start_time_of_day']}-{goal['end_time_of_day']}"
+                
+                # Durum (basit kontrol)
+                status = "Aktif"  # Bu kısım geliştirilebilir
+                
+                self.goals_tree.insert("", "end", iid=goal['id'],
+                                      values=(type_display, target, limit, time_window, status))
+                                      
+        except Exception as e:
+            logging.error(f"Hedefler yüklenirken hata: {e}")
 
     def _delete_goal(self):
+        """Seçili hedefi siler."""
         selected_item = self.goals_tree.selection()
         if not selected_item:
-            messagebox.showwarning("Seçim Yok", "Lütfen silmek istediğiniz hedefi seçin.", parent=self)
+            messagebox.showwarning("Seçim Gerekli", "Lütfen silmek istediğiniz hedefi seçin.", parent=self)
             return
         
-        goal_id = self.goals_tree.item(selected_item, 'iid') 
+        goal_id = selected_item[0]
         
         if messagebox.askyesno("Hedef Sil", "Bu hedefi silmek istediğinizden emin misiniz?", parent=self):
-            database.delete_goal(goal_id)
-            messagebox.showinfo("Başarılı", "Hedef başarıyla silindi.", parent=self)
-            self._load_goals() 
+            try:
+                database.delete_goal(goal_id)
+                messagebox.showinfo("Başarılı", "Hedef başarıyla silindi.", parent=self)
+                self._load_goals()
+            except Exception as e:
+                logging.error(f"Hedef silinirken hata: {e}")
+                messagebox.showerror("Hata", f"Hedef silinirken hata oluştu: {e}", parent=self)
 
-class SettingsWindow(BaseWindow): 
+class SettingsWindow(BaseWindow):
+    """Ayarlar penceresi."""
+    
     def __init__(self, master=None, app_instance=None):
-        super().__init__(master, "Kognita - Ayarlar", "500x580") 
-        self.resizable(False, False)
-        self.app_instance = app_instance 
+        super().__init__(master, "Ayarlar", "600x650")
+        self.app_instance = app_instance
         self.config_manager = app_instance.config_manager if app_instance else None
-
-        self._create_widgets()
-        self._load_settings()
-        self.add_footer_close_button()
-
-
-    def _create_widgets(self):
-        content_frame = ttk.Frame(self.main_frame)
-        content_frame.pack(fill=tk.BOTH, expand=True)
-
-        content_frame.grid_columnconfigure(1, weight=1) 
-
-        # Genel Ayarlar
-        general_settings_frame = ttk.LabelFrame(content_frame, text="Genel Ayarlar", padding=10)
-        general_settings_frame.grid(row=0, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
-        general_settings_frame.grid_columnconfigure(1, weight=1)
-
-        ttk.Label(general_settings_frame, text="Boşta Kalma Eşiği (saniye):", font=STYLE_CONFIG["font_normal"]).grid(row=0, column=0, padx=5, pady=5, sticky="w")
-        self.idle_threshold_var = tk.IntVar()
-        self.idle_threshold_entry = ttk.Entry(general_settings_frame, textvariable=self.idle_threshold_var, font=STYLE_CONFIG["font_normal"])
-        self.idle_threshold_entry.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
-
-        ttk.Label(general_settings_frame, text="Uygulama Dili:", font=STYLE_CONFIG["font_normal"]).grid(row=1, column=0, padx=5, pady=5, sticky="w")
-        self.language_var = StringVar()
-        self.language_combobox = ttk.Combobox(general_settings_frame, textvariable=self.language_var, values=["tr", "en"], state="readonly", font=STYLE_CONFIG["font_normal"])
-        self.language_combobox.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
-        self.language_combobox.bind("<<ComboboxSelected>>", self._on_language_change)
-
-        self.run_on_startup_var = tk.BooleanVar()
-        ttk.Checkbutton(general_settings_frame, text="Windows Başlangıcında Çalıştır", variable=self.run_on_startup_var, 
-                        command=self._on_run_on_startup_change, font=STYLE_CONFIG["font_normal"]).grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky="w")
-
-        ttk.Label(general_settings_frame, text="Veri Saklama Süresi (gün):", font=STYLE_CONFIG["font_normal"]).grid(row=3, column=0, padx=5, pady=5, sticky="w")
-        self.data_retention_var = tk.IntVar()
-        self.data_retention_spinbox = ttk.Spinbox(general_settings_frame, from_=0, to=9999, increment=1, textvariable=self.data_retention_var, font=STYLE_CONFIG["font_normal"], width=10)
-        self.data_retention_spinbox.grid(row=3, column=1, padx=5, pady=5, sticky="ew")
-        ttk.Label(general_settings_frame, text="(0 = Sonsuz, negatif değer olamaz)", font=STYLE_CONFIG["font_normal"]).grid(row=4, column=0, columnspan=2, padx=5, sticky="w")
-
-
-        # Bildirim Ayarları
-        notification_frame = ttk.LabelFrame(content_frame, text="Bildirim Ayarları", padding=10) 
-        notification_frame.grid(row=1, column=0, columnspan=2, padx=5, pady=15, sticky="ew") 
-        notification_frame.grid_columnconfigure(1, weight=1) 
-
-        self.enable_goal_notifications_var = tk.BooleanVar()
-        ttk.Checkbutton(notification_frame, text="Hedef Bildirimlerini Etkinleştir", variable=self.enable_goal_notifications_var, font=STYLE_CONFIG["font_normal"]).grid(row=0, column=0, columnspan=2, padx=5, pady=2, sticky="w")
-
-        self.enable_focus_notifications_var = tk.BooleanVar()
-        ttk.Checkbutton(notification_frame, text="Odaklanma Modu Bildirimlerini Etkinleştir", variable=self.enable_focus_notifications_var, font=STYLE_CONFIG["font_normal"]).grid(row=1, column=0, columnspan=2, padx=5, pady=2, sticky="w")
-
-        ttk.Label(notification_frame, text="Odaklanma Bildirim Sıklığı (sn):", font=STYLE_CONFIG["font_normal"]).grid(row=2, column=0, padx=5, pady=2, sticky="w")
-        self.focus_freq_var = tk.IntVar()
-        self.focus_freq_entry = ttk.Entry(notification_frame, textvariable=self.focus_freq_var, font=STYLE_CONFIG["font_normal"])
-        self.focus_freq_entry.grid(row=2, column=1, padx=5, pady=2, sticky="ew")
-
-        self.show_achievement_notifications_var = tk.BooleanVar()
-        ttk.Checkbutton(notification_frame, text="Başarım Bildirimlerini Göster", variable=self.show_achievement_notifications_var, font=STYLE_CONFIG["font_normal"]).grid(row=3, column=0, columnspan=2, padx=5, pady=2, sticky="w")
-
-        # Gelişmiş Ayarlar (Sentry vb.)
-        advanced_settings_frame = ttk.LabelFrame(content_frame, text="Gelişmiş Ayarlar", padding=10)
-        advanced_settings_frame.grid(row=2, column=0, columnspan=2, padx=5, pady=15, sticky="ew") 
-        advanced_settings_frame.grid_columnconfigure(1, weight=1)
-
-        self.enable_sentry_reporting_var = tk.BooleanVar()
-        ttk.Checkbutton(advanced_settings_frame, text="Anonim Hata Raporlamasını Etkinleştir (Sentry)", variable=self.enable_sentry_reporting_var, font=STYLE_CONFIG["font_normal"]).grid(row=0, column=0, columnspan=2, padx=5, pady=2, sticky="w")
-
-        ttk.Button(self.footer_frame, text="Ayarları Kaydet", command=self._save_settings, 
-                   style='Accent.TButton').pack(side='right', padx=15, pady=10)
         
-        ttk.Button(self.footer_frame, text="Güncellemeleri Kontrol Et", command=self._check_for_updates).pack(side='right', padx=(0, 5), pady=10)
+        self._create_settings_interface()
+        self._load_settings()
+        
+        self.add_action_buttons([
+            {'text': 'Kaydet', 'command': self._save_settings, 'style': 'Accent.TButton'},
+            {'text': 'İptal', 'command': self.destroy, 'style': 'TButton'}
+        ])
 
+    def _create_settings_interface(self):
+        """Ayarlar arayüzü."""
+        # Ayarlar notebook
+        settings_notebook = ttk.Notebook(self.content_frame)
+        settings_notebook.pack(fill='both', expand=True)
+        
+        # Genel Ayarlar
+        general_frame = ttk.Frame(settings_notebook, style='TFrame')
+        settings_notebook.add(general_frame, text="⚙️ Genel")
+        self._create_general_settings(general_frame)
+        
+        # Bildirim Ayarları
+        notifications_frame = ttk.Frame(settings_notebook, style='TFrame')
+        settings_notebook.add(notifications_frame, text="🔔 Bildirimler")
+        self._create_notification_settings(notifications_frame)
+        
+        # Gelişmiş Ayarlar
+        advanced_frame = ttk.Frame(settings_notebook, style='TFrame')
+        settings_notebook.add(advanced_frame, text="🔧 Gelişmiş")
+        self._create_advanced_settings(advanced_frame)
+
+    def _create_general_settings(self, parent):
+        """Genel ayarlar sekmesi."""
+        content = ttk.Frame(parent, style='TFrame')
+        content.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Başlık
+        title_label = ttk.Label(content, text="Genel Ayarlar",
+                               font=STYLE_CONFIG["font_h2"])
+        title_label.pack(anchor='w', pady=(0, 20))
+        
+        # Ayarlar grid
+        settings_grid = ttk.Frame(content, style='TFrame')
+        settings_grid.pack(fill='x')
+        settings_grid.grid_columnconfigure(1, weight=1)
+        
+        row = 0
+        
+        # Boşta kalma eşiği
+        ttk.Label(settings_grid, text="Boşta Kalma Eşiği (saniye):",
+                 font=STYLE_CONFIG["font_bold"]).grid(row=row, column=0, sticky='w', padx=(0, 15), pady=8)
+        
+        self.idle_threshold_var = tk.IntVar()
+        self.idle_threshold_spin = ttk.Spinbox(settings_grid, from_=30, to=600, increment=30,
+                                              textvariable=self.idle_threshold_var, width=10)
+        self.idle_threshold_spin.grid(row=row, column=1, sticky='w', pady=8)
+        row += 1
+        
+        # Uygulama dili
+        ttk.Label(settings_grid, text="Uygulama Dili:",
+                 font=STYLE_CONFIG["font_bold"]).grid(row=row, column=0, sticky='w', padx=(0, 15), pady=8)
+        
+        self.language_var = StringVar()
+        self.language_combo = ttk.Combobox(settings_grid, textvariable=self.language_var,
+                                          values=["Türkçe", "English"], state="readonly", width=15)
+        self.language_combo.grid(row=row, column=1, sticky='w', pady=8)
+        row += 1
+        
+        # Başlangıçta çalıştır
+        self.startup_var = tk.BooleanVar()
+        startup_check = ttk.Checkbutton(settings_grid, text="Windows başlangıcında çalıştır",
+                                       variable=self.startup_var)
+        startup_check.grid(row=row, column=0, columnspan=2, sticky='w', pady=8)
+        row += 1
+        
+        # Veri saklama süresi
+        ttk.Label(settings_grid, text="Veri Saklama Süresi (gün):",
+                 font=STYLE_CONFIG["font_bold"]).grid(row=row, column=0, sticky='w', padx=(0, 15), pady=8)
+        
+        self.retention_var = tk.IntVar()
+        self.retention_spin = ttk.Spinbox(settings_grid, from_=0, to=9999, increment=30,
+                                         textvariable=self.retention_var, width=10)
+        self.retention_spin.grid(row=row, column=1, sticky='w', pady=8)
+        
+        # Açıklama
+        ttk.Label(settings_grid, text="(0 = Sonsuz saklama)",
+                 font=STYLE_CONFIG["font_small"],
+                 foreground=STYLE_CONFIG["text_secondary"]).grid(row=row+1, column=1, sticky='w', pady=2)
+
+    def _create_notification_settings(self, parent):
+        """Bildirim ayarları sekmesi."""
+        content = ttk.Frame(parent, style='TFrame')
+        content.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Başlık
+        title_label = ttk.Label(content, text="Bildirim Ayarları",
+                               font=STYLE_CONFIG["font_h2"])
+        title_label.pack(anchor='w', pady=(0, 20))
+        
+        # Bildirim türleri
+        notifications_frame = ttk.LabelFrame(content, text="Bildirim Türleri",
+                                            style='TLabelframe')
+        notifications_frame.pack(fill='x', pady=(0, 15))
+        
+        notif_content = ttk.Frame(notifications_frame, style='TFrame')
+        notif_content.pack(fill='x', padx=15, pady=15)
+        
+        self.goal_notifications_var = tk.BooleanVar()
+        ttk.Checkbutton(notif_content, text="Hedef bildirimlerini göster",
+                       variable=self.goal_notifications_var).pack(anchor='w', pady=3)
+        
+        self.focus_notifications_var = tk.BooleanVar()
+        ttk.Checkbutton(notif_content, text="Odaklanma modu bildirimlerini göster",
+                       variable=self.focus_notifications_var).pack(anchor='w', pady=3)
+        
+        self.achievement_notifications_var = tk.BooleanVar()
+        ttk.Checkbutton(notif_content, text="Başarım bildirimlerini göster",
+                       variable=self.achievement_notifications_var).pack(anchor='w', pady=3)
+        
+        # Bildirim sıklığı
+        freq_frame = ttk.LabelFrame(content, text="Bildirim Sıklığı",
+                                   style='TLabelframe')
+        freq_frame.pack(fill='x')
+        
+        freq_content = ttk.Frame(freq_frame, style='TFrame')
+        freq_content.pack(fill='x', padx=15, pady=15)
+        freq_content.grid_columnconfigure(1, weight=1)
+        
+        ttk.Label(freq_content, text="Odaklanma bildirimi sıklığı (saniye):",
+                 font=STYLE_CONFIG["font_bold"]).grid(row=0, column=0, sticky='w', padx=(0, 15), pady=5)
+        
+        self.focus_freq_var = tk.IntVar()
+        ttk.Spinbox(freq_content, from_=60, to=1800, increment=60,
+                   textvariable=self.focus_freq_var, width=10).grid(row=0, column=1, sticky='w', pady=5)
+
+    def _create_advanced_settings(self, parent):
+        """Gelişmiş ayarlar sekmesi."""
+        content = ttk.Frame(parent, style='TFrame')
+        content.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Başlık
+        title_label = ttk.Label(content, text="Gelişmiş Ayarlar",
+                               font=STYLE_CONFIG["font_h2"])
+        title_label.pack(anchor='w', pady=(0, 20))
+        
+        # Hata raporlama
+        error_frame = ttk.LabelFrame(content, text="Hata Raporlama",
+                                    style='TLabelframe')
+        error_frame.pack(fill='x', pady=(0, 15))
+        
+        error_content = ttk.Frame(error_frame, style='TFrame')
+        error_content.pack(fill='x', padx=15, pady=15)
+        
+        self.sentry_var = tk.BooleanVar()
+        ttk.Checkbutton(error_content, text="Anonim hata raporlamasını etkinleştir (Sentry)",
+                       variable=self.sentry_var).pack(anchor='w', pady=3)
+        
+        # Açıklama
+        desc_text = ("Bu seçenek etkinleştirildiğinde, uygulama hataları anonim olarak "
+                    "geliştiricilere gönderilir. Kişisel verileriniz paylaşılmaz.")
+        ttk.Label(error_content, text=desc_text, font=STYLE_CONFIG["font_small"],
+                 foreground=STYLE_CONFIG["text_secondary"],
+                 wraplength=400).pack(anchor='w', pady=(5, 0))
+        
+        # Güncellemeler
+        update_frame = ttk.LabelFrame(content, text="Güncellemeler",
+                                     style='TLabelframe')
+        update_frame.pack(fill='x')
+        
+        update_content = ttk.Frame(update_frame, style='TFrame')
+        update_content.pack(fill='x', padx=15, pady=15)
+        
+        ttk.Button(update_content, text="Güncellemeleri Kontrol Et",
+                  command=self._check_updates).pack(anchor='w')
 
     def _load_settings(self):
+        """Mevcut ayarları yükler."""
         if not self.config_manager:
             return
-            
-        self.idle_threshold_var.set(self.config_manager.get('settings.idle_threshold_seconds', 180))
-        self.language_var.set(self.config_manager.get('settings.language', 'tr'))
-        self.run_on_startup_var.set(self.config_manager.get('settings.run_on_startup', False))
-        self.enable_sentry_reporting_var.set(self.config_manager.get('settings.enable_sentry_reporting', True))
-        self.data_retention_var.set(self.config_manager.get('settings.data_retention_days', 365))
         
-        notif_settings = self.config_manager.get('settings.notification_settings', {})
-        self.enable_goal_notifications_var.set(notif_settings.get('enable_goal_notifications', True))
-        self.enable_focus_notifications_var.set(notif_settings.get('enable_focus_notifications', True))
-        self.focus_freq_var.set(notif_settings.get('focus_notification_frequency_seconds', 300))
-        self.show_achievement_notifications_var.set(notif_settings.get('show_achievement_notifications', True))
-
+        try:
+            # Genel ayarlar
+            self.idle_threshold_var.set(self.config_manager.get('settings.idle_threshold_seconds', 180))
+            
+            language = self.config_manager.get('settings.language', 'tr')
+            language_display = "Türkçe" if language == 'tr' else "English"
+            self.language_var.set(language_display)
+            
+            self.startup_var.set(self.config_manager.get('settings.run_on_startup', False))
+            self.retention_var.set(self.config_manager.get('settings.data_retention_days', 365))
+            
+            # Bildirim ayarları
+            notif_settings = self.config_manager.get('settings.notification_settings', {})
+            self.goal_notifications_var.set(notif_settings.get('enable_goal_notifications', True))
+            self.focus_notifications_var.set(notif_settings.get('enable_focus_notifications', True))
+            self.achievement_notifications_var.set(notif_settings.get('show_achievement_notifications', True))
+            self.focus_freq_var.set(notif_settings.get('focus_notification_frequency_seconds', 300))
+            
+            # Gelişmiş ayarlar
+            self.sentry_var.set(self.config_manager.get('settings.enable_sentry_reporting', True))
+            
+        except Exception as e:
+            logging.error(f"Ayarlar yüklenirken hata: {e}")
 
     def _save_settings(self):
+        """Ayarları kaydeder."""
         if not self.config_manager:
             messagebox.showerror("Hata", "Yapılandırma yöneticisi bulunamadı.", parent=self)
             return
-            
+        
         try:
-            new_idle_threshold = self.idle_threshold_var.get()
-            if new_idle_threshold <= 0:
-                messagebox.showwarning("Geçersiz Değer", "Boşta kalma eşiği pozitif bir sayı olmalıdır.", parent=self)
-                return
-            self.config_manager.set('settings.idle_threshold_seconds', new_idle_threshold)
+            # Genel ayarlar
+            idle_threshold = self.idle_threshold_var.get()
+            if idle_threshold <= 0:
+                raise ValueError("Boşta kalma eşiği pozitif bir sayı olmalıdır.")
+            self.config_manager.set('settings.idle_threshold_seconds', idle_threshold)
             
-            new_notif_settings = {
-                "enable_goal_notifications": self.enable_goal_notifications_var.get(),
-                "enable_focus_notifications": self.enable_focus_notifications_var.get(),
-                "focus_notification_frequency_seconds": self.focus_freq_var.get(),
-                "show_achievement_notifications": self.show_achievement_notifications_var.get()
+            language_display = self.language_var.get()
+            language_code = 'tr' if language_display == 'Türkçe' else 'en'
+            self.config_manager.set('settings.language', language_code)
+            
+            self.config_manager.set('settings.run_on_startup', self.startup_var.get())
+            
+            retention_days = self.retention_var.get()
+            if retention_days < 0:
+                raise ValueError("Veri saklama süresi negatif olamaz.")
+            self.config_manager.set('settings.data_retention_days', retention_days)
+            
+            # Bildirim ayarları
+            notif_settings = {
+                'enable_goal_notifications': self.goal_notifications_var.get(),
+                'enable_focus_notifications': self.focus_notifications_var.get(),
+                'show_achievement_notifications': self.achievement_notifications_var.get(),
+                'focus_notification_frequency_seconds': self.focus_freq_var.get()
             }
-            if new_notif_settings["focus_notification_frequency_seconds"] <= 0:
-                 messagebox.showwarning("Geçersiz Değer", "Odaklanma bildirim sıklığı pozitif bir sayı olmalıdır.", parent=self)
-                 return
-
-            self.config_manager.set('settings.notification_settings', new_notif_settings)
             
-            self.config_manager.set('settings.run_on_startup', self.run_on_startup_var.get())
-            self.config_manager.set('settings.enable_sentry_reporting', self.enable_sentry_reporting_var.get())
+            if notif_settings['focus_notification_frequency_seconds'] <= 0:
+                raise ValueError("Bildirim sıklığı pozitif bir sayı olmalıdır.")
+                
+            self.config_manager.set('settings.notification_settings', notif_settings)
             
-            new_data_retention_days = self.data_retention_var.get()
-            if new_data_retention_days < 0: 
-                 messagebox.showwarning("Geçersiz Değer", "Veri saklama süresi negatif olamaz.", parent=self)
-                 return
-            self.config_manager.set('settings.data_retention_days', new_data_retention_days)
-
-
+            # Gelişmiş ayarlar
+            self.config_manager.set('settings.enable_sentry_reporting', self.sentry_var.get())
+            
+            # App instance güncelle
             if self.app_instance:
-                self.app_instance._set_run_on_startup(self.run_on_startup_var.get())
-                self.app_instance.tracker_instance.update_settings(self.config_manager.get('settings'))
+                self.app_instance._set_run_on_startup(self.startup_var.get())
+                if hasattr(self.app_instance, 'tracker_instance'):
+                    self.app_instance.tracker_instance.update_settings(self.config_manager.get('settings'))
             
             messagebox.showinfo("Başarılı", "Ayarlar başarıyla kaydedildi.", parent=self)
-        except ValueError:
-            messagebox.showwarning("Geçersiz Giriş", "Ayarlar için geçerli sayısal değerler girin.", parent=self)
+            self.destroy()
+            
+        except ValueError as e:
+            messagebox.showwarning("Geçersiz Giriş", str(e), parent=self)
         except Exception as e:
-            logging.error(f"Ayarlar kaydedilirken hata: {e}", exc_info=True)
-            messagebox.showerror("Hata", f"Ayarlar kaydedilirken bir hata oluştu: {e}", parent=self)
+            logging.error(f"Ayarlar kaydedilirken hata: {e}")
+            messagebox.showerror("Hata", f"Ayarlar kaydedilirken hata oluştu: {e}", parent=self)
 
-    def _on_language_change(self, event):
-        new_language = self.language_var.get()
-        if self.config_manager:
-            self.config_manager.set('settings.language', new_language)
-        messagebox.showinfo("Bilgi", f"Uygulama dili '{new_language}' olarak ayarlandı. Değişiklikler bir sonraki başlatmada tam olarak uygulanabilir.", parent=self)
+    def _check_updates(self):
+        """Güncellemeleri kontrol eder."""
+        messagebox.showinfo("Güncelleme Kontrolü", 
+                           "Güncellemeler kontrol ediliyor...\n\n"
+                           "Bu özellik gelecek sürümlerde aktif hale gelecektir.", 
+                           parent=self)
 
-    def _on_run_on_startup_change(self):
-        pass 
-
-    def _check_for_updates(self):
-        messagebox.showinfo("Güncelleme Kontrolü", "Güncellemeler kontrol ediliyor... (Bu özellik şu an için bir placeholder'dır).", parent=self)
-
-
-class FocusSetupWindow(BaseWindow): 
+class FocusSetupWindow(BaseWindow):
+    """Odaklanma oturumu kurulum penceresi."""
+    
     def __init__(self, master, on_start_callback):
-        super().__init__(master, "Kognita - Odaklanma Oturumu Ayarla", "400x480") 
-        self.resizable(False, False)
+        super().__init__(master, "Odaklanma Oturumu Ayarla", "450x550")
         self.on_start_callback = on_start_callback
+        
+        self._create_focus_interface()
+        
+        self.add_action_buttons([
+            {'text': 'Başlat', 'command': self._start_session, 'style': 'Accent.TButton'},
+            {'text': 'İptal', 'command': self.destroy, 'style': 'TButton'}
+        ])
 
-        self._create_widgets()
-        self.add_footer_close_button()
-
-
-    def _create_widgets(self):
-        content_frame = ttk.Frame(self.main_frame) 
-        content_frame.pack(fill=tk.BOTH, expand=True)
-
-        content_frame.grid_columnconfigure(0, weight=1) 
-
-        ttk.Label(content_frame, text="Oturum Süresi (Dakika):", font=STYLE_CONFIG["font_bold"]).pack(pady=(10, 5))
+    def _create_focus_interface(self):
+        """Odaklanma arayüzü."""
+        # Başlık
+        title_label = ttk.Label(self.content_frame, 
+                               text="Odaklanma Oturumu",
+                               font=STYLE_CONFIG["font_h2"])
+        title_label.pack(pady=(0, 20))
+        
+        # Oturum süresi
+        duration_frame = ttk.LabelFrame(self.content_frame, text="Oturum Süresi",
+                                       style='TLabelframe')
+        duration_frame.pack(fill='x', pady=(0, 20))
+        
+        duration_content = ttk.Frame(duration_frame, style='TFrame')
+        duration_content.pack(fill='x', padx=15, pady=15)
+        
         self.duration_var = tk.IntVar(value=60)
-        self.duration_spinbox = ttk.Spinbox(content_frame, from_=10, to=240, increment=10, textvariable=self.duration_var, width=10, font=STYLE_CONFIG["font_normal"])
-        self.duration_spinbox.pack(pady=5)
-
-        ttk.Label(content_frame, text="İzin Verilen Kategoriler:", font=STYLE_CONFIG["font_bold"]).pack(pady=(15, 5))
         
-        self.categories_frame = ttk.LabelFrame(content_frame, text="Seçilebilir Kategoriler", padding=10)
-        self.categories_frame.pack(fill=tk.BOTH, expand=True, pady=5, padx=10)
-
-        canvas = tk.Canvas(self.categories_frame, borderwidth=0, background=STYLE_CONFIG["bg_color"])
-        vscroll = ttk.Scrollbar(self.categories_frame, orient="vertical", command=canvas.yview)
-        canvas_frame = ttk.Frame(canvas) 
-
-        canvas.create_window((0, 0), window=canvas_frame, anchor="nw")
-        canvas.configure(yscrollcommand=vscroll.set)
-
-        canvas_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        # Hazır süre seçenekleri
+        duration_options = [
+            ("25 dakika (Pomodoro)", 25),
+            ("45 dakika", 45),
+            ("60 dakika", 60),
+            ("90 dakika", 90),
+            ("120 dakika", 120)
+        ]
         
-        all_categories = database.get_all_categories()
-        if "Other" not in all_categories:
-            all_categories.append("Other")
+        for text, value in duration_options:
+            rb = ttk.Radiobutton(duration_content, text=text, 
+                                variable=self.duration_var, value=value)
+            rb.pack(anchor='w', pady=3)
+        
+        # Özel süre
+        custom_frame = ttk.Frame(duration_content, style='TFrame')
+        custom_frame.pack(fill='x', pady=(10, 0))
+        
+        ttk.Radiobutton(custom_frame, text="Özel süre:", 
+                       variable=self.duration_var, value=0).pack(side='left')
+        
+        self.custom_duration_var = tk.IntVar(value=30)
+        custom_spin = ttk.Spinbox(custom_frame, from_=10, to=240, increment=5,
+                                 textvariable=self.custom_duration_var, width=8)
+        custom_spin.pack(side='left', padx=(10, 5))
+        ttk.Label(custom_frame, text="dakika").pack(side='left')
+        
+        # İzin verilen kategoriler
+        categories_frame = ttk.LabelFrame(self.content_frame, text="İzin Verilen Kategoriler",
+                                         style='TLabelframe')
+        categories_frame.pack(fill='both', expand=True)
+        
+        categories_content = ttk.Frame(categories_frame, style='TFrame')
+        categories_content.pack(fill='both', expand=True, padx=15, pady=15)
+        
+        # Scrollable frame
+        canvas = tk.Canvas(categories_content, bg=STYLE_CONFIG["bg_card"], 
+                          highlightthickness=0, height=200)
+        scrollbar = ttk.Scrollbar(categories_content, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas, style='TFrame')
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Kategorileri yükle
+        categories = database.get_all_categories()
+        if "Other" not in categories:
+            categories.append("Other")
         
         self.category_vars = {}
-        row_num = 0
-        for category in sorted(all_categories):
-            var = tk.BooleanVar(value=True) 
-            cb = ttk.Checkbutton(canvas_frame, text=category, variable=var, font=STYLE_CONFIG["font_normal"])
-            cb.grid(row=row_num, column=0, sticky="w", padx=5, pady=2)
+        for i, category in enumerate(sorted(categories)):
+            var = tk.BooleanVar(value=True)
+            cb = ttk.Checkbutton(scrollable_frame, text=category, variable=var)
+            cb.grid(row=i, column=0, sticky='w', padx=5, pady=2)
             self.category_vars[category] = var
-            row_num += 1
-
+        
         canvas.pack(side="left", fill="both", expand=True)
-        vscroll.pack(side="right", fill="y")
+        scrollbar.pack(side="right", fill="y")
+        
+        # Hızlı seçim butonları
+        quick_frame = ttk.Frame(categories_content, style='TFrame')
+        quick_frame.pack(fill='x', pady=(10, 0))
 
+        ttk.Button(quick_frame, text="Tümünü Seç", 
+                  command=self._select_all_categories).pack(side='left', padx=5)
+        ttk.Button(quick_frame, text="Hiçbirini Seçme", 
+                  command=self._deselect_all_categories).pack(side='left', padx=5)
+        ttk.Button(quick_frame, text="Sadece Verimlilik", 
+                  command=self._select_productivity_categories).pack(side='left', padx=5)
 
-        ttk.Button(self.footer_frame, text="Odaklanmayı Başlat", command=self._start_session, 
-                   style='Accent.TButton').pack(pady=10, padx=15, side=tk.RIGHT)
+    def _select_all_categories(self):
+        """Tüm kategorileri seçer."""
+        for var in self.category_vars.values():
+            var.set(True)
+
+    def _deselect_all_categories(self):
+        """Tüm kategori seçimlerini kaldırır."""
+        for var in self.category_vars.values():
+            var.set(False)
+
+    def _select_productivity_categories(self):
+        """Sadece verimlilik kategorilerini seçer."""
+        productivity_categories = ['Work', 'Development', 'Design', 'Education', 'Writing']
+        
+        for category, var in self.category_vars.items():
+            if any(prod_cat.lower() in category.lower() for prod_cat in productivity_categories):
+                var.set(True)
+            else:
+                var.set(False)
 
     def _start_session(self):
-        duration = self.duration_var.get()
-        allowed_categories = [cat for cat, var in self.category_vars.items() if var.get()]
+        """Odaklanma oturumunu başlatır."""
+        try:
+            # Süreyi belirle
+            if self.duration_var.get() == 0:
+                duration = self.custom_duration_var.get()
+            else:
+                duration = self.duration_var.get()
+            
+            if duration <= 0:
+                raise ValueError("Oturum süresi pozitif bir sayı olmalıdır.")
+            
+            # İzin verilen kategorileri topla
+            allowed_categories = [cat for cat, var in self.category_vars.items() if var.get()]
+            
+            if not allowed_categories:
+                raise ValueError("En az bir kategori seçilmelidir.")
+            
+            # Callback'i çağır
+            self.on_start_callback(duration, allowed_categories)
+            self.destroy()
+            
+        except ValueError as e:
+            messagebox.showwarning("Geçersiz Ayar", str(e), parent=self)
+        except Exception as e:
+            logging.error(f"Odaklanma oturumu başlatılırken hata: {e}")
+            messagebox.showerror("Hata", f"Oturum başlatılırken hata oluştu: {e}", parent=self)
 
-        if duration <= 0:
-            messagebox.showwarning("Geçersiz Süre", "Lütfen pozitif bir oturum süresi girin.", parent=self)
-            return
-        
-        if not allowed_categories:
-            messagebox.showwarning("Kategori Seçimi", "Lütfen en az bir izin verilen kategori seçin.", parent=self)
-            return
-
-        self.on_start_callback(duration, allowed_categories)
-        self.destroy()
-
-class CategoryManagementWindow(BaseWindow): 
+class CategoryManagementWindow(BaseWindow):
+    """Kategori yönetimi penceresi."""
+    
     def __init__(self, master=None):
-        super().__init__(master, "Kognita - Kategorileri Yönet", "750x550") 
-        self.resizable(False, False)
-
-        self._create_widgets()
+        super().__init__(master, "Kategori Yönetimi", "900x650")
+        
+        self._create_category_interface()
         self._load_data()
-        self.add_footer_close_button()
+        
+        self.add_action_buttons([
+            {'text': 'Kapat', 'command': self.destroy, 'style': 'TButton'}
+        ])
 
-
-    def _create_widgets(self):
-        content_frame = ttk.Frame(self.main_frame) 
-        content_frame.pack(fill=tk.BOTH, expand=True)
-
-        left_frame = ttk.LabelFrame(content_frame, text="Kategorize Edilmemiş Uygulamalar", padding=10)
-        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
-
-        self.uncategorized_listbox = Listbox(left_frame, selectmode=tk.SINGLE, font=STYLE_CONFIG["font_normal"])
-        self.uncategorized_listbox.pack(fill=tk.BOTH, expand=True)
+    def _create_category_interface(self):
+        """Kategori yönetimi arayüzü."""
+        # Ana panel düzeni
+        main_panel = ttk.Frame(self.content_frame, style='TFrame')
+        main_panel.pack(fill='both', expand=True)
+        
+        # Sol panel - Kategorize edilmemiş uygulamalar
+        left_panel = ttk.LabelFrame(main_panel, text="Kategorize Edilmemiş Uygulamalar",
+                                   style='TLabelframe')
+        left_panel.pack(side='left', fill='both', expand=True, padx=(0, 10))
+        
+        left_content = ttk.Frame(left_panel, style='TFrame')
+        left_content.pack(fill='both', expand=True, padx=15, pady=15)
+        
+        # Arama kutusu
+        search_frame = ttk.Frame(left_content, style='TFrame')
+        search_frame.pack(fill='x', pady=(0, 10))
+        
+        ttk.Label(search_frame, text="Ara:", font=STYLE_CONFIG["font_bold"]).pack(side='left', padx=(0, 5))
+        self.search_var = StringVar()
+        search_entry = ttk.Entry(search_frame, textvariable=self.search_var)
+        search_entry.pack(side='left', fill='x', expand=True)
+        search_entry.bind('<KeyRelease>', self._filter_uncategorized)
+        
+        # Uncategorized listbox
+        self.uncategorized_listbox = Listbox(left_content, selectmode=tk.SINGLE,
+                                            font=STYLE_CONFIG["font_normal"])
+        self.uncategorized_listbox.pack(fill='both', expand=True)
         self.uncategorized_listbox.bind("<<ListboxSelect>>", self._on_uncategorized_select)
-
-        middle_frame = ttk.Frame(content_frame) 
-        middle_frame.pack(side=tk.LEFT, padx=10)
-
-        ttk.Label(middle_frame, text="Kategori Seç:", font=STYLE_CONFIG["font_bold"]).pack(pady=(0,5))
-        self.category_combobox = ttk.Combobox(middle_frame, state="readonly", font=STYLE_CONFIG["font_normal"])
-        self.category_combobox.pack(pady=5)
         
-        ttk.Button(middle_frame, text="Kategori Ata", command=self._assign_category, 
-                   style='Accent.TButton').pack(pady=(15,10))
-        ttk.Button(middle_frame, text="Yeni Kategori Ekle", command=self._add_new_category).pack(pady=10)
-        ttk.Button(middle_frame, text="Seçili Kategoriyi Sil", command=self._delete_selected_category, 
-                   style='Danger.TButton').pack(pady=10)
-
-
-        right_frame = ttk.LabelFrame(content_frame, text="Kategorize Edilmiş Uygulamalar", padding=10)
-        right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(10, 0))
-
-        self.categorized_tree = ttk.Treeview(right_frame, columns=("process_name", "category"), show="headings")
-        self.categorized_tree.heading("process_name", text="Uygulama Adı")
+        # Orta panel - Kontroller
+        middle_panel = ttk.Frame(main_panel, style='TFrame', width=200)
+        middle_panel.pack(side='left', fill='y', padx=10)
+        middle_panel.pack_propagate(False)
+        
+        # Kategori seçimi
+        category_frame = ttk.LabelFrame(middle_panel, text="Kategori İşlemleri",
+                                       style='TLabelframe')
+        category_frame.pack(fill='x', pady=(0, 15))
+        
+        cat_content = ttk.Frame(category_frame, style='TFrame')
+        cat_content.pack(fill='x', padx=15, pady=15)
+        
+        ttk.Label(cat_content, text="Kategori Seç:",
+                 font=STYLE_CONFIG["font_bold"]).pack(anchor='w', pady=(0, 5))
+        
+        self.category_var = StringVar()
+        self.category_combo = ttk.Combobox(cat_content, textvariable=self.category_var,
+                                          state="readonly")
+        self.category_combo.pack(fill='x', pady=(0, 10))
+        
+        # Butonlar
+        ttk.Button(cat_content, text="Kategori Ata", command=self._assign_category,
+                  style='Accent.TButton').pack(fill='x', pady=2)
+        
+        ttk.Button(cat_content, text="Yeni Kategori", command=self._add_new_category).pack(fill='x', pady=2)
+        
+        ttk.Button(cat_content, text="Kategori Sil", command=self._delete_category,
+                  style='Danger.TButton').pack(fill='x', pady=2)
+        
+        # İstatistikler
+        stats_frame = ttk.LabelFrame(middle_panel, text="İstatistikler",
+                                    style='TLabelframe')
+        stats_frame.pack(fill='x')
+        
+        stats_content = ttk.Frame(stats_frame, style='TFrame')
+        stats_content.pack(fill='x', padx=15, pady=15)
+        
+        self.stats_label = ttk.Label(stats_content, text="İstatistikler yükleniyor...",
+                                    font=STYLE_CONFIG["font_small"])
+        self.stats_label.pack(anchor='w')
+        
+        # Sağ panel - Kategorize edilmiş uygulamalar
+        right_panel = ttk.LabelFrame(main_panel, text="Kategorize Edilmiş Uygulamalar",
+                                    style='TLabelframe')
+        right_panel.pack(side='right', fill='both', expand=True, padx=(10, 0))
+        
+        right_content = ttk.Frame(right_panel, style='TFrame')
+        right_content.pack(fill='both', expand=True, padx=15, pady=15)
+        
+        # Kategorize edilmiş uygulamalar tablosu
+        self.categorized_tree = ttk.Treeview(right_content, 
+                                           columns=("app", "category", "usage"),
+                                           show="headings", height=20)
+        
+        self.categorized_tree.heading("app", text="Uygulama")
         self.categorized_tree.heading("category", text="Kategori")
-        self.categorized_tree.column("process_name", width=150)
-        self.categorized_tree.column("category", width=120)
-        self.categorized_tree.pack(fill=tk.BOTH, expand=True)
-        self.categorized_tree.bind("<<TreeviewSelect>>", self._on_categorized_select)
+        self.categorized_tree.heading("usage", text="Son Kullanım")
         
-        tree_scrollbar = ttk.Scrollbar(right_frame, orient="vertical", command=self.categorized_tree.yview)
-        self.categorized_tree.configure(yscrollcommand=tree_scrollbar.set)
-        tree_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
+        self.categorized_tree.column("app", width=200)
+        self.categorized_tree.column("category", width=120)
+        self.categorized_tree.column("usage", width=100)
+        
+        # Scrollbar
+        cat_scrollbar = ttk.Scrollbar(right_content, orient="vertical",
+                                     command=self.categorized_tree.yview)
+        self.categorized_tree.configure(yscrollcommand=cat_scrollbar.set)
+        
+        self.categorized_tree.pack(side='left', fill='both', expand=True)
+        cat_scrollbar.pack(side='right', fill='y')
+        
+        self.categorized_tree.bind("<<TreeviewSelect>>", self._on_categorized_select)
 
     def _load_data(self):
+        """Kategori verilerini yükler."""
+        try:
+            # Kategorize edilmemiş uygulamaları yükle
+            self.uncategorized_apps = database.get_uncategorized_apps()
+            self._update_uncategorized_list()
+            
+            # Kategorileri yükle
+            categories = database.get_all_categories()
+            if 'Other' not in categories:
+                categories.append('Other')
+            self.category_combo['values'] = sorted(categories)
+            
+            if categories:
+                self.category_combo.set(categories[0])
+            
+            # Kategorize edilmiş uygulamaları yükle
+            self._load_categorized_apps()
+            
+            # İstatistikleri güncelle
+            self._update_stats()
+            
+        except Exception as e:
+            logging.error(f"Kategori verileri yüklenirken hata: {e}")
+
+    def _update_uncategorized_list(self):
+        """Kategorize edilmemiş liste günceller."""
         self.uncategorized_listbox.delete(0, tk.END)
-        uncategorized_apps = database.get_uncategorized_apps()
-        for app in uncategorized_apps:
+        
+        search_term = self.search_var.get().lower()
+        filtered_apps = [app for app in self.uncategorized_apps 
+                        if search_term in app.lower()]
+        
+        for app in sorted(filtered_apps):
             self.uncategorized_listbox.insert(tk.END, app)
-        
-        all_categories = database.get_all_categories()
-        if 'Other' not in all_categories: 
-            all_categories.append('Other')
-        self.category_combobox['values'] = sorted(all_categories) 
-        if all_categories:
-            self.category_combobox.set(all_categories[0]) 
 
-        self.categorized_tree.delete(*self.categorized_tree.get_children())
-        
-        with database.get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT process_name, category FROM app_categories ORDER BY category, process_name")
-            categorized_apps = cursor.fetchall()
+    def _filter_uncategorized(self, event=None):
+        """Arama kutusuna göre filtreler."""
+        self._update_uncategorized_list()
 
-        for app, category in categorized_apps:
-            self.categorized_tree.insert("", "end", values=(app, category))
+    def _load_categorized_apps(self):
+        """Kategorize edilmiş uygulamaları yükler."""
+        try:
+            self.categorized_tree.delete(*self.categorized_tree.get_children())
+            
+            with database.get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT ac.process_name, ac.category, 
+                           MAX(ul.start_time) as last_usage
+                    FROM app_categories ac
+                    LEFT JOIN usage_logs ul ON ac.process_name = ul.process_name
+                    GROUP BY ac.process_name, ac.category
+                    ORDER BY ac.category, ac.process_name
+                """)
+                
+                categorized_apps = cursor.fetchall()
+            
+            for app, category, last_usage in categorized_apps:
+                if last_usage:
+                    usage_date = datetime.datetime.fromtimestamp(last_usage).strftime('%Y-%m-%d')
+                else:
+                    usage_date = "Hiç kullanılmamış"
+                
+                self.categorized_tree.insert("", "end", values=(app, category, usage_date))
+                
+        except Exception as e:
+            logging.error(f"Kategorize edilmiş uygulamalar yüklenirken hata: {e}")
 
+    def _update_stats(self):
+        """İstatistikleri günceller."""
+        try:
+            uncategorized_count = len(self.uncategorized_apps)
+            
+            with database.get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT COUNT(*) FROM app_categories")
+                categorized_count = cursor.fetchone()[0]
+                
+                cursor.execute("SELECT COUNT(DISTINCT category) FROM app_categories")
+                category_count = cursor.fetchone()[0]
+            
+            stats_text = (f"Kategorize edilmemiş: {uncategorized_count}\n"
+                         f"Kategorize edilmiş: {categorized_count}\n"
+                         f"Toplam kategori: {category_count}")
+            
+            self.stats_label.config(text=stats_text)
+            
+        except Exception as e:
+            logging.error(f"İstatistikler güncellenirken hata: {e}")
 
     def _on_uncategorized_select(self, event):
-        selected_index = self.uncategorized_listbox.curselection()
-        if selected_index:
-            process_name = self.uncategorized_listbox.get(selected_index)
-            current_category = database.get_category_for_process(process_name)
-            if current_category != 'Other' or process_name in self.uncategorized_listbox.get(0, tk.END): 
-                 self.category_combobox.set(current_category)
+        """Kategorize edilmemiş uygulama seçildiğinde."""
+        selection = self.uncategorized_listbox.curselection()
+        if selection:
+            app_name = self.uncategorized_listbox.get(selection[0])
+            # Mevcut kategoriyi bul ve seç
+            current_category = database.get_category_for_process(app_name)
+            if current_category and current_category in self.category_combo['values']:
+                self.category_combo.set(current_category)
 
     def _on_categorized_select(self, event):
-        selected_item = self.categorized_tree.selection()
-        if selected_item:
-            item_values = self.categorized_tree.item(selected_item, 'values')
-            process_name = item_values[0]
-            category = item_values[1]
-            self.category_combobox.set(category) 
+        """Kategorize edilmiş uygulama seçildiğinde."""
+        selection = self.categorized_tree.selection()
+        if selection:
+            item_values = self.categorized_tree.item(selection[0], 'values')
+            if item_values:
+                category = item_values[1]
+                self.category_combo.set(category)
 
     def _assign_category(self):
-        selected_uncategorized_index = self.uncategorized_listbox.curselection()
-        selected_categorized_item = self.categorized_tree.selection()
-        selected_category = self.category_combobox.get()
-
-        if not selected_category:
-            messagebox.showwarning("Uyarı", "Lütfen atanacak bir kategori seçin veya yeni bir kategori oluşturun.", parent=self)
-            return
-
-        process_name_to_assign = None
-        if selected_uncategorized_index:
-            process_name_to_assign = self.uncategorized_listbox.get(selected_uncategorized_index)
-        elif selected_categorized_item:
-            item_values = self.categorized_tree.item(selected_categorized_item, 'values')
-            process_name_to_assign = item_values[0]
-        
-        if process_name_to_assign:
-            database.update_app_category(process_name_to_assign, selected_category)
-            messagebox.showinfo("Başarılı", f"'{process_name_to_assign}' uygulamasına '{selected_category}' kategorisi atandı.", parent=self)
-            self._load_data() 
-        else:
-            messagebox.showwarning("Uyarı", "Lütfen kategorize edilecek bir uygulama seçin.", parent=self)
+        """Seçili uygulamaya kategori atar."""
+        try:
+            selected_category = self.category_var.get()
+            if not selected_category:
+                messagebox.showwarning("Uyarı", "Lütfen bir kategori seçin.", parent=self)
+                return
+            
+            # Hangi uygulamanın seçildiğini bul
+            app_to_assign = None
+            
+            # Önce uncategorized listeden kontrol et
+            uncategorized_selection = self.uncategorized_listbox.curselection()
+            if uncategorized_selection:
+                app_to_assign = self.uncategorized_listbox.get(uncategorized_selection[0])
+            else:
+                # Categorized tree'den kontrol et
+                categorized_selection = self.categorized_tree.selection()
+                if categorized_selection:
+                    item_values = self.categorized_tree.item(categorized_selection[0], 'values')
+                    app_to_assign = item_values[0]
+            
+            if not app_to_assign:
+                messagebox.showwarning("Uyarı", "Lütfen bir uygulama seçin.", parent=self)
+                return
+            
+            # Kategoriyi ata
+            database.update_app_category(app_to_assign, selected_category)
+            
+            messagebox.showinfo("Başarılı", 
+                               f"'{app_to_assign}' uygulaması '{selected_category}' kategorisine atandı.",
+                               parent=self)
+            
+            # Verileri yenile
+            self._load_data()
+            
+        except Exception as e:
+            logging.error(f"Kategori atanırken hata: {e}")
+            messagebox.showerror("Hata", f"Kategori atanırken hata oluştu: {e}", parent=self)
 
     def _add_new_category(self):
-        new_category = simpledialog.askstring("Yeni Kategori", "Lütfen yeni kategori adını girin:", parent=self) 
-        if new_category and new_category.strip():
-            new_category_clean = new_category.strip()
-            current_categories = list(self.category_combobox['values'])
-            if new_category_clean not in current_categories:
-                current_categories.append(new_category_clean)
-                self.category_combobox['values'] = sorted(current_categories)
-                self.category_combobox.set(new_category_clean)
-                messagebox.showinfo("Bilgi", f"'{new_category_clean}' yeni kategori olarak eklendi. Şimdi bir uygulamaya atayabilirsiniz.", parent=self)
-            else:
-                messagebox.showwarning("Uyarı", "Bu kategori zaten mevcut.", parent=self)
-        else:
-            messagebox.showwarning("Uyarı", "Kategori adı boş olamaz.", parent=self)
-
-    def _delete_selected_category(self):
-        selected_category = self.category_combobox.get()
-        if not selected_category:
-            messagebox.showwarning("Uyarı", "Lütfen silmek istediğiniz bir kategori seçin.", parent=self)
-            return
-
-        if selected_category == 'Other':
-            messagebox.showerror("Hata", "'Other' varsayılan bir kategoridir ve silinemez.", parent=self)
-            return
-
-        response = messagebox.askyesno("Kategori Sil", 
-                                       f"'{selected_category}' kategorisini silmek istediğinizden emin misiniz?\n"
-                                       "Bu kategoriye atanmış tüm uygulamalar 'Other' kategorisine taşınacaktır. "
-                                       "Bu işlem geri alınamaz.", parent=self)
-        if response:
-            try:
-                apps_in_category = []
-                with database.get_db_connection() as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("SELECT process_name FROM app_categories WHERE category = ?", (selected_category,))
-                    apps_in_category = [row[0] for row in cursor.fetchall()]
+        """Yeni kategori ekler."""
+        try:
+            new_category = simpledialog.askstring(
+                "Yeni Kategori", 
+                "Yeni kategori adını girin:",
+                parent=self
+            )
+            
+            if new_category and new_category.strip():
+                new_category = new_category.strip()
                 
-                for app_name in apps_in_category:
-                    database.update_app_category(app_name, 'Other') 
+                # Mevcut kategorileri kontrol et
+                current_categories = list(self.category_combo['values'])
+                if new_category in current_categories:
+                    messagebox.showwarning("Uyarı", "Bu kategori zaten mevcut.", parent=self)
+                    return
+                
+                # Kategoriyi ekle
+                current_categories.append(new_category)
+                self.category_combo['values'] = sorted(current_categories)
+                self.category_combo.set(new_category)
+                
+                messagebox.showinfo("Başarılı", 
+                                   f"'{new_category}' kategorisi eklendi.",
+                                   parent=self)
+            
+        except Exception as e:
+            logging.error(f"Yeni kategori eklenirken hata: {e}")
+            messagebox.showerror("Hata", f"Kategori eklenirken hata oluştu: {e}", parent=self)
 
-                current_categories = list(self.category_combobox['values'])
-                if selected_category in current_categories:
-                    current_categories.remove(selected_category)
-                    self.category_combobox['values'] = sorted(current_categories)
-                    if current_categories:
-                        if self.category_combobox.get() == selected_category:
-                            self.category_combobox.set(current_categories[0] if current_categories else '')
-                    else:
-                        self.category_combobox.set('')
+    def _delete_category(self):
+        """Seçili kategoriyi siler."""
+        try:
+            selected_category = self.category_var.get()
+            if not selected_category:
+                messagebox.showwarning("Uyarı", "Lütfen silinecek kategoriyi seçin.", parent=self)
+                return
+            
+            if selected_category == 'Other':
+                messagebox.showerror("Hata", "'Other' kategorisi silinemez.", parent=self)
+                return
+            
+            # Onay al
+            if not messagebox.askyesno("Kategori Sil", 
+                                      f"'{selected_category}' kategorisini silmek istediğinizden emin misiniz?\n\n"
+                                      "Bu kategorideki tüm uygulamalar 'Other' kategorisine taşınacaktır.",
+                                      parent=self):
+                return
+            
+            # Kategoriyi sil ve uygulamaları Other'a taşı
+            with database.get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE app_categories SET category = 'Other' WHERE category = ?", 
+                             (selected_category,))
+                conn.commit()
+            
+            # Combobox'ı güncelle
+            current_categories = list(self.category_combo['values'])
+            if selected_category in current_categories:
+                current_categories.remove(selected_category)
+                self.category_combo['values'] = sorted(current_categories)
+                if current_categories:
+                    self.category_combo.set(current_categories[0])
+            
+            messagebox.showinfo("Başarılı", 
+                               f"'{selected_category}' kategorisi silindi ve uygulamalar 'Other' kategorisine taşındı.",
+                               parent=self)
+            
+            # Verileri yenile
+            self._load_data()
+            
+        except Exception as e:
+            logging.error(f"Kategori silinirken hata: {e}")
+            messagebox.showerror("Hata", f"Kategori silinirken hata oluştu: {e}", parent=self)
 
-                messagebox.showinfo("Başarılı", f"'{selected_category}' kategorisi silindi ve ilgili uygulamalar 'Other' kategorisine taşındı.", parent=self)
-                self._load_data() 
-
-            except Exception as e:
-                logging.error(f"Kategori silinirken hata: {e}", exc_info=True)
-                messagebox.showerror("Hata", f"Kategori silinirken bir hata oluştu: {e}", parent=self)
-
-class NotificationHistoryWindow(BaseWindow): 
+class NotificationHistoryWindow(BaseWindow):
+    """Bildirim geçmişi penceresi."""
+    
     def __init__(self, master=None, app_instance=None):
-        super().__init__(master, "Kognita - Bildirim Geçmişi", "750x550") 
-        self.resizable(False, False)
+        super().__init__(master, "Bildirim Geçmişi", "800x600")
         self.app_instance = app_instance
-
-        self._create_widgets()
+        
+        self._create_notification_interface()
         self._load_notifications()
-        self.add_footer_close_button()
-
+        
+        self.add_action_buttons([
+            {'text': 'Kapat', 'command': self._on_closing, 'style': 'TButton'}
+        ])
+        
         self.protocol("WM_DELETE_WINDOW", self._on_closing)
 
-    def _create_widgets(self):
-        content_frame = ttk.Frame(self.main_frame) 
-        content_frame.pack(fill=tk.BOTH, expand=True)
-
-        top_controls_frame = ttk.Frame(content_frame, padding="5") 
-        top_controls_frame.pack(fill=tk.X)
-
-        ttk.Button(top_controls_frame, text="Tümünü Okundu İşaretle", command=self._mark_all_as_read).pack(side=tk.LEFT, padx=5)
-        ttk.Button(top_controls_frame, text="Okunmuşları Sil", command=self._delete_read_notifications, 
-                   style='Danger.TButton').pack(side=tk.RIGHT, padx=5)
-        ttk.Button(top_controls_frame, text="Seçiliyi Sil", command=self._delete_selected_notification).pack(side=tk.RIGHT, padx=5)
+    def _create_notification_interface(self):
+        """Bildirim arayüzü."""
+        # Üst kontrol paneli
+        control_panel = ttk.Frame(self.content_frame, style='TFrame')
+        control_panel.pack(fill='x', pady=(0, 15))
         
-
-        self.notification_tree = ttk.Treeview(content_frame, columns=("timestamp", "title", "message", "type"), show="headings")
-        self.notification_tree.heading("timestamp", text="Zaman")
-        self.notification_tree.heading("title", text="Başlık")
-        self.notification_tree.heading("message", text="Mesaj")
-        self.notification_tree.heading("type", text="Tip")
-
-        self.notification_tree.column("timestamp", width=150, anchor="w")
-        self.notification_tree.column("title", width=150, anchor="w")
-        self.notification_tree.column("message", width=300, anchor="w")
-        self.notification_tree.column("type", width=80, anchor="center")
-
-        scrollbar = ttk.Scrollbar(content_frame, orient="vertical", command=self.notification_tree.yview)
-        self.notification_tree.configure(yscrollcommand=scrollbar.set)
-
-        self.notification_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=10)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        self.notification_tree.bind("<Double-1>", self._on_double_click) 
+        # Sol taraf - Filtreler
+        filter_frame = ttk.Frame(control_panel, style='TFrame')
+        filter_frame.pack(side='left', fill='x', expand=True)
+        
+        ttk.Label(filter_frame, text="Filtrele:",
+                 font=STYLE_CONFIG["font_bold"]).pack(side='left', padx=(0, 10))
+        
+        self.filter_var = StringVar(value="Tümü")
+        filter_combo = ttk.Combobox(filter_frame, textvariable=self.filter_var,
+                                   values=["Tümü", "Okunmamış", "Hedef", "Odaklanma", "Başarım"],
+                                   state="readonly", width=12)
+        filter_combo.pack(side='left', padx=(0, 15))
+        filter_combo.bind("<<ComboboxSelected>>", self._filter_notifications)
+        
+        # Sağ taraf - Eylemler
+        action_frame = ttk.Frame(control_panel, style='TFrame')
+        action_frame.pack(side='right')
+        
+        ttk.Button(action_frame, text="Tümünü Okundu İşaretle",
+                  command=self._mark_all_read).pack(side='right', padx=5)
+        ttk.Button(action_frame, text="Okunmuşları Sil",
+                  command=self._delete_read_notifications,
+                  style='Danger.TButton').pack(side='right', padx=5)
+        
+        # Bildirimler tablosu
+        self.notifications_tree = ttk.Treeview(self.content_frame,
+                                             columns=("time", "title", "message", "type", "status"),
+                                             show="headings", height=18)
+        
+        self.notifications_tree.heading("time", text="Zaman")
+        self.notifications_tree.heading("title", text="Başlık")
+        self.notifications_tree.heading("message", text="Mesaj")
+        self.notifications_tree.heading("type", text="Tip")
+        self.notifications_tree.heading("status", text="Durum")
+        
+        self.notifications_tree.column("time", width=120)
+        self.notifications_tree.column("title", width=150)
+        self.notifications_tree.column("message", width=300)
+        self.notifications_tree.column("type", width=80)
+        self.notifications_tree.column("status", width=80)
+        
+        # Scrollbar
+        notif_scrollbar = ttk.Scrollbar(self.content_frame, orient="vertical",
+                                       command=self.notifications_tree.yview)
+        self.notifications_tree.configure(yscrollcommand=notif_scrollbar.set)
+        
+        self.notifications_tree.pack(side='left', fill='both', expand=True)
+        notif_scrollbar.pack(side='right', fill='y')
+        
+        # Çift tıklama olayı
+        self.notifications_tree.bind("<Double-1>", self._on_notification_double_click)
 
     def _load_notifications(self):
-        for item in self.notification_tree.get_children():
-            self.notification_tree.delete(item)
-        
-        notifications = database.get_all_notifications()
-        for notif in notifications:
-            timestamp_str = datetime.datetime.fromtimestamp(notif['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
-            tag = "read" if notif['is_read'] else "unread"
+        """Bildirimleri yükler."""
+        try:
+            self.notifications_tree.delete(*self.notifications_tree.get_children())
             
-            self.notification_tree.insert("", "end", iid=notif['id'], values=(timestamp_str, notif['title'], notif['message'], notif['type']), tags=(tag,))
-        
-        self.notification_tree.tag_configure("unread", font=(STYLE_CONFIG["font_normal"][0], 9, 'bold'), background='#E0F2F7', foreground='black') 
-        self.notification_tree.tag_configure("read", font=STYLE_CONFIG["font_normal"], foreground='gray', background=STYLE_CONFIG["bg_color"]) 
-
-    def _on_double_click(self, event):
-        item_id = self.notification_tree.focus()
-        if item_id:
-            item_data = self.notification_tree.item(item_id, 'values')
-            notification_id = item_id 
-
-            title = item_data[1]
-            message = item_data[2]
-            timestamp_str = item_data[0]
-
-            messagebox.showinfo(f"Bildirim Detayı: {title}", f"Zaman: {timestamp_str}\n\n{message}", parent=self) 
+            notifications = database.get_all_notifications()
             
+            for notif in notifications:
+                timestamp = datetime.datetime.fromtimestamp(notif['timestamp'])
+                time_str = timestamp.strftime('%m/%d %H:%M')
+                
+                status = "Okundu" if notif['is_read'] else "Okunmamış"
+                
+                # Satır renklendirmesi için tag
+                tag = "read" if notif['is_read'] else "unread"
+                
+                item = self.notifications_tree.insert("", "end", 
+                                                     iid=notif['id'],
+                                                     values=(time_str, notif['title'], 
+                                                           notif['message'][:50] + "..." if len(notif['message']) > 50 else notif['message'], 
+                                                           notif['type'], status),
+                                                     tags=(tag,))
+            
+            # Tag renklendirmesi
+            self.notifications_tree.tag_configure("unread", 
+                                                 font=STYLE_CONFIG["font_bold"],
+                                                 background=STYLE_CONFIG["accent_light"])
+            self.notifications_tree.tag_configure("read", 
+                                                 foreground=STYLE_CONFIG["text_secondary"])
+            
+        except Exception as e:
+            logging.error(f"Bildirimler yüklenirken hata: {e}")
+
+    def _filter_notifications(self, event=None):
+        """Bildirimleri filtreler."""
+        # Bu fonksiyon gelecekte implement edilebilir
+        pass
+
+    def _on_notification_double_click(self, event):
+        """Bildirime çift tıklandığında."""
+        try:
+            item_id = self.notifications_tree.focus()
+            if not item_id:
+                return
+            
+            item_values = self.notifications_tree.item(item_id, 'values')
+            notification_id = item_id
+            
+            # Bildirim detaylarını göster
+            title = item_values[1]
+            message_preview = item_values[2]
+            time_str = item_values[0]
+            
+            # Tam mesajı al
+            notifications = database.get_all_notifications()
+            full_message = ""
+            for notif in notifications:
+                if str(notif['id']) == str(notification_id):
+                    full_message = notif['message']
+                    break
+            
+            # Detail dialog
+            messagebox.showinfo(f"Bildirim: {title}", 
+                               f"Zaman: {time_str}\n\n{full_message}",
+                               parent=self)
+            
+            # Okundu olarak işaretle
             database.mark_notification_as_read(notification_id)
             self._load_notifications()
-            if self.app_instance:
-                self.app_instance.update_tray_icon() 
-
-    def _mark_all_as_read(self):
-        response = messagebox.askyesno("Tümünü Okundu İşaretle", "Tüm bildirimleri okundu olarak işaretlemek istediğinizden emin misiniz?", parent=self) 
-        if response:
-            with database.get_db_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("UPDATE notifications SET is_read = 1 WHERE is_read = 0")
-                conn.commit()
-            self._load_notifications()
-            if self.app_instance:
-                self.app_instance.update_tray_icon() 
-            messagebox.showinfo("Başarılı", "Tüm bildirimler okundu olarak işaretlendi.", parent=self) 
-
-    def _delete_selected_notification(self):
-        selected_item = self.notification_tree.focus()
-        if not selected_item:
-            messagebox.showwarning("Seçim Yok", "Lütfen silmek istediğiniz bir bildirim seçin.", parent=self)
-            return
-        
-        notification_id = selected_item
-        if messagebox.askyesno("Bildirim Sil", "Bu bildirimi silmek istediğinizden emin misiniz?", parent=self): 
-            database.delete_notification(notification_id)
-            self._load_notifications()
-            if self.app_instance:
-                self.app_instance.update_tray_icon()
-            messagebox.showinfo("Başarılı", "Bildirim başarıyla silindi.", parent=self)
             
-    def _delete_read_notifications(self):
-        response = messagebox.askyesno("Okunmuş Bildirimleri Sil", "Tüm okunmuş bildirimleri silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.", parent=self) 
-        if response:
-            with database.get_db_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("DELETE FROM notifications WHERE is_read = 1")
-                conn.commit()
-            self._load_notifications()
+            # Tray icon güncelle
             if self.app_instance:
                 self.app_instance.update_tray_icon()
-            messagebox.showinfo("Başarılı", "Tüm okunmuş bildirimler silindi.", parent=self) 
+                
+        except Exception as e:
+            logging.error(f"Bildirim detayı gösterilirken hata: {e}")
+
+    def _mark_all_read(self):
+        """Tüm bildirimleri okundu işaretle."""
+        if messagebox.askyesno("Onay", "Tüm bildirimler okundu olarak işaretlensin mi?", parent=self):
+            try:
+                with database.get_db_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("UPDATE notifications SET is_read = 1 WHERE is_read = 0")
+                    conn.commit()
+                
+                self._load_notifications()
+                
+                if self.app_instance:
+                    self.app_instance.update_tray_icon()
+                
+                messagebox.showinfo("Başarılı", "Tüm bildirimler okundu olarak işaretlendi.", parent=self)
+                
+            except Exception as e:
+                logging.error(f"Bildirimler okundu işaretlenirken hata: {e}")
+                messagebox.showerror("Hata", f"İşlem sırasında hata oluştu: {e}", parent=self)
+
+    def _delete_read_notifications(self):
+        """Okunmuş bildirimleri siler."""
+        if messagebox.askyesno("Onay", 
+                              "Tüm okunmuş bildirimler silinsin mi?\n\nBu işlem geri alınamaz.", 
+                              parent=self):
+            try:
+                with database.get_db_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("DELETE FROM notifications WHERE is_read = 1")
+                    deleted_count = cursor.rowcount
+                    conn.commit()
+                
+                self._load_notifications()
+                
+                if self.app_instance:
+                    self.app_instance.update_tray_icon()
+                
+                messagebox.showinfo("Başarılı", 
+                                   f"{deleted_count} okunmuş bildirim silindi.", 
+                                   parent=self)
+                
+            except Exception as e:
+                logging.error(f"Okunmuş bildirimler silinirken hata: {e}")
+                messagebox.showerror("Hata", f"Silme işlemi sırasında hata oluştu: {e}", parent=self)
 
     def _on_closing(self):
+        """Pencere kapatılırken."""
         if self.app_instance:
-            self.app_instance.update_tray_icon() 
+            self.app_instance.update_tray_icon()
         self.destroy()
 
-class AchievementWindow(BaseWindow): 
+class AchievementWindow(BaseWindow):
+    """Başarımlar penceresi."""
+    
     def __init__(self, master=None):
-        super().__init__(master, "Kognita - Başarımlar", "650x450")
-        self.resizable(False, False)
-        self._create_widgets()
+        super().__init__(master, "Başarımlar", "700x500")
+        
+        self._create_achievement_interface()
         self._load_achievements()
-        self.add_footer_close_button()
+        
+        self.add_action_buttons([
+            {'text': 'Kapat', 'command': self.destroy, 'style': 'TButton'}
+        ])
 
-
-    def _create_widgets(self):
-        content_frame = ttk.Frame(self.main_frame) 
-        content_frame.pack(fill=tk.BOTH, expand=True)
-
-        ttk.Label(content_frame, text="Kazanılmış Başarımlarınız", font=STYLE_CONFIG["font_title"]).pack(pady=10)
-
-        self.achievement_tree = ttk.Treeview(content_frame, columns=("name", "description", "unlocked_at"), show="headings")
-        self.achievement_tree.heading("name", text="Başarım Adı")
-        self.achievement_tree.heading("description", text="Açıklama")
-        self.achievement_tree.heading("unlocked_at", text="Kazanılma Tarihi")
-
-        self.achievement_tree.column("name", width=150, anchor="w")
-        self.achievement_tree.column("description", width=300, anchor="w")
-        self.achievement_tree.column("unlocked_at", width=150, anchor="center")
-
-        scrollbar = ttk.Scrollbar(content_frame, orient="vertical", command=self.achievement_tree.yview)
-        self.achievement_tree.configure(yscrollcommand=scrollbar.set)
-
-        self.achievement_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    def _create_achievement_interface(self):
+        """Başarım arayüzü."""
+        # Başlık
+        title_frame = ttk.Frame(self.content_frame, style='TFrame')
+        title_frame.pack(fill='x', pady=(0, 20))
+        
+        title_label = ttk.Label(title_frame, text="🏆 Kazanılmış Başarımlar",
+                               font=STYLE_CONFIG["font_h2"])
+        title_label.pack(side='left')
+        
+        # İstatistik
+        self.stats_label = ttk.Label(title_frame, text="",
+                                    font=STYLE_CONFIG["font_normal"],
+                                    foreground=STYLE_CONFIG["text_secondary"])
+        self.stats_label.pack(side='right')
+        
+        # Başarımlar tablosu
+        self.achievements_tree = ttk.Treeview(self.content_frame,
+                                            columns=("name", "description", "date", "category"),
+                                            show="headings", height=15)
+        
+        self.achievements_tree.heading("name", text="Başarım")
+        self.achievements_tree.heading("description", text="Açıklama")
+        self.achievements_tree.heading("date", text="Kazanılma Tarihi")
+        self.achievements_tree.heading("category", text="Kategori")
+        
+        self.achievements_tree.column("name", width=150)
+        self.achievements_tree.column("description", width=300)
+        self.achievements_tree.column("date", width=120)
+        self.achievements_tree.column("category", width=100)
+        
+        # Scrollbar
+        ach_scrollbar = ttk.Scrollbar(self.content_frame, orient="vertical",
+                                     command=self.achievements_tree.yview)
+        self.achievements_tree.configure(yscrollcommand=ach_scrollbar.set)
+        
+        self.achievements_tree.pack(side='left', fill='both', expand=True)
+        ach_scrollbar.pack(side='right', fill='y')
 
     def _load_achievements(self):
-        for item in self.achievement_tree.get_children():
-            self.achievement_tree.delete(item)
-        
-        achievements = database.get_all_unlocked_achievements()
-        for ach in achievements:
-            unlocked_at_str = datetime.datetime.fromtimestamp(ach[3]).strftime('%Y-%m-%d %H:%M:%S')
-            self.achievement_tree.insert("", "end", values=(ach[0], ach[1], unlocked_at_str))
-
+        """Başarımları yükler."""
+        try:
+            self.achievements_tree.delete(*self.achievements_tree.get_children())
+            
+            achievements = database.get_all_unlocked_achievements()
+            
+            for ach in achievements:
+                date_str = datetime.datetime.fromtimestamp(ach[3]).strftime('%Y-%m-%d %H:%M')
+                
+                # Kategori belirleme (basit yaklaşım)
+                category = "Genel"
+                if "gün" in ach[0].lower():
+                    category = "Süreklilik"
+                elif "saat" in ach[0].lower() or "dakika" in ach[0].lower():
+                    category = "Zaman"
+                elif "uygulama" in ach[0].lower():
+                    category = "Kullanım"
+                
+                self.achievements_tree.insert("", "end", values=(ach[0], ach[1], date_str, category))
+            
+            # İstatistik güncelle
+            total_achievements = len(achievements)
+            self.stats_label.config(text=f"Toplam {total_achievements} başarım kazanıldı")
+            
+        except Exception as e:
+            logging.error(f"Başarımlar yüklenirken hata: {e}")
 
 class MainDashboardWindow(BaseWindow):
-    """Ana kontrol paneli penceresi."""
+    """Ana kontrol paneli."""
+    
     def __init__(self, master=None, app_instance=None):
-        super().__init__(master, "Kognita - Ana Panel", "800x600")
-        self.resizable(False, False)
+        super().__init__(master, "Kognita - Ana Panel", "900x700", resizable=True)
         self.app_instance = app_instance
-
-        self._create_widgets()
+        
+        self._create_dashboard_interface()
         self._load_dashboard_data()
-        self.add_footer_close_button()
+        
+        self.add_action_buttons([
+            {'text': 'Kapat', 'command': self.destroy, 'style': 'TButton'}
+        ])
+        
+        # Otomatik yenileme (5 dakikada bir)
+        self.after(300000, self._auto_refresh)
 
-    def _create_widgets(self):
+    def _create_dashboard_interface(self):
+        """Ana panel arayüzü."""
+        # Üst özet paneli
+        summary_panel = ttk.Frame(self.content_frame, style='Card.TFrame')
+        summary_panel.pack(fill='x', pady=(0, 20))
+        
+        summary_content = ttk.Frame(summary_panel, style='TFrame')
+        summary_content.pack(fill='x', padx=20, pady=20)
+        
+        # Özet başlığı
+        summary_title = ttk.Label(summary_content, text="📊 Günlük Özet",
+                                 font=STYLE_CONFIG["font_h2"])
+        summary_title.pack(anchor='w', pady=(0, 10))
+        
+        # Özet metrikleri
+        metrics_frame = ttk.Frame(summary_content, style='TFrame')
+        metrics_frame.pack(fill='x')
+        
+        # Grid düzeni için 4 sütun
+        for i in range(4):
+            metrics_frame.grid_columnconfigure(i, weight=1)
+        
+        # Metrik kartları
+        self.total_time_label = self._create_metric_card(metrics_frame, "Toplam Süre", "Hesaplanıyor...", 0, 0)
+        self.active_apps_label = self._create_metric_card(metrics_frame, "Aktif Uygulama", "Hesaplanıyor...", 0, 1)
+        self.top_category_label = self._create_metric_card(metrics_frame, "En Çok Kullanılan", "Hesaplanıyor...", 0, 2)
+        self.productivity_score_label = self._create_metric_card(metrics_frame, "Verimlilik Skoru", "Hesaplanıyor...", 0, 3)
+        
         # Ana içerik alanı
-        main_content = ttk.Frame(self.main_frame)
-        main_content.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-
-        # Üst bilgi paneli
-        info_frame = ttk.LabelFrame(main_content, text="Günlük Özet", padding=10)
-        info_frame.pack(fill=tk.X, pady=(0, 10))
-
-        self.daily_summary_label = ttk.Label(info_frame, text="Bugün toplam aktif süre: Hesaplanıyor...", 
-                                             font=STYLE_CONFIG["font_bold"])
-        self.daily_summary_label.pack(pady=5)
-
-        # Hızlı eylemler
-        actions_frame = ttk.LabelFrame(main_content, text="Hızlı Eylemler", padding=10)
-        actions_frame.pack(fill=tk.X, pady=(0, 10))
-
-        actions_grid = ttk.Frame(actions_frame)
-        actions_grid.pack(fill=tk.X)
-
-        ttk.Button(actions_grid, text="Raporu Göster", 
-                  command=lambda: ReportWindow(master=self)).grid(row=0, column=0, padx=5, pady=5, sticky="ew")
-        ttk.Button(actions_grid, text="Hedefleri Yönet", 
-                  command=lambda: GoalsWindow(master=self)).grid(row=0, column=1, padx=5, pady=5, sticky="ew")
-        ttk.Button(actions_grid, text="Kategorileri Yönet", 
-                  command=lambda: CategoryManagementWindow(master=self)).grid(row=0, column=2, padx=5, pady=5, sticky="ew")
-
-        ttk.Button(actions_grid, text="Odaklanma Başlat", 
-                  command=self._start_focus_session,
-                  style='Accent.TButton').grid(row=1, column=0, padx=5, pady=5, sticky="ew")
-        ttk.Button(actions_grid, text="Bildirimler", 
-                  command=lambda: NotificationHistoryWindow(master=self, app_instance=self.app_instance)).grid(row=1, column=1, padx=5, pady=5, sticky="ew")
-        ttk.Button(actions_grid, text="Ayarlar", 
-                  command=lambda: SettingsWindow(master=self, app_instance=self.app_instance)).grid(row=1, column=2, padx=5, pady=5, sticky="ew")
-
-        # Grid kolonlarını eşit genişlikte yap
-        for i in range(3):
-            actions_grid.grid_columnconfigure(i, weight=1)
-
+        content_panel = ttk.Frame(self.content_frame, style='TFrame')
+        content_panel.pack(fill='both', expand=True)
+        
+        # Sol panel - Hızlı eylemler
+        left_panel = ttk.LabelFrame(content_panel, text="🚀 Hızlı Eylemler",
+                                   style='TLabelframe')
+        left_panel.pack(side='left', fill='y', padx=(0, 10), ipadx=10)
+        
+        left_content = ttk.Frame(left_panel, style='TFrame')
+        left_content.pack(fill='both', padx=15, pady=15)
+        
+        # Hızlı eylem butonları
+        action_buttons = [
+            ("📈 Detaylı Rapor", lambda: ReportWindow(master=self), 'Accent.TButton'),
+            ("🎯 Hedef Yönetimi", lambda: GoalsWindow(master=self), 'TButton'),
+            ("📁 Kategori Yönetimi", lambda: CategoryManagementWindow(master=self), 'TButton'),
+            ("🔔 Bildirimler", lambda: NotificationHistoryWindow(master=self, app_instance=self.app_instance), 'TButton'),
+            ("🏆 Başarımlar", lambda: AchievementWindow(master=self), 'TButton'),
+            ("⚙️ Ayarlar", lambda: SettingsWindow(master=self, app_instance=self.app_instance), 'TButton'),
+            ("🎯 Odaklanma Başlat", self._start_focus_session, 'Success.TButton')
+        ]
+        
+        for text, command, style in action_buttons:
+            btn = ttk.Button(left_content, text=text, command=command, style=style)
+            btn.pack(fill='x', pady=3)
+        
+        # Sağ panel - Son aktiviteler ve durum
+        right_panel = ttk.Frame(content_panel, style='TFrame')
+        right_panel.pack(side='right', fill='both', expand=True)
+        
         # Son aktiviteler
-        recent_frame = ttk.LabelFrame(main_content, text="Son Aktiviteler", padding=10)
-        recent_frame.pack(fill=tk.BOTH, expand=True)
-
-        self.recent_tree = ttk.Treeview(recent_frame, columns=("time", "app", "category", "duration"), show="headings")
+        recent_frame = ttk.LabelFrame(right_panel, text="📝 Son Aktiviteler",
+                                     style='TLabelframe')
+        recent_frame.pack(fill='both', expand=True, pady=(0, 10))
+        
+        recent_content = ttk.Frame(recent_frame, style='TFrame')
+        recent_content.pack(fill='both', expand=True, padx=15, pady=15)
+        
+        self.recent_tree = ttk.Treeview(recent_content,
+                                       columns=("time", "app", "category", "duration"),
+                                       show="headings", height=12)
+        
         self.recent_tree.heading("time", text="Zaman")
         self.recent_tree.heading("app", text="Uygulama")
         self.recent_tree.heading("category", text="Kategori")
         self.recent_tree.heading("duration", text="Süre")
-
-        self.recent_tree.column("time", width=120, anchor="w")
-        self.recent_tree.column("app", width=200, anchor="w")
-        self.recent_tree.column("category", width=100, anchor="w")
-        self.recent_tree.column("duration", width=80, anchor="center")
-
-        recent_scrollbar = ttk.Scrollbar(recent_frame, orient="vertical", command=self.recent_tree.yview)
+        
+        self.recent_tree.column("time", width=80)
+        self.recent_tree.column("app", width=150)
+        self.recent_tree.column("category", width=100)
+        self.recent_tree.column("duration", width=80)
+        
+        recent_scrollbar = ttk.Scrollbar(recent_content, orient="vertical",
+                                        command=self.recent_tree.yview)
         self.recent_tree.configure(yscrollcommand=recent_scrollbar.set)
+        
+        self.recent_tree.pack(side='left', fill='both', expand=True)
+        recent_scrollbar.pack(side='right', fill='y')
+        
+        # Sistem durumu
+        status_frame = ttk.LabelFrame(right_panel, text="🔍 Sistem Durumu",
+                                     style='TLabelframe')
+        status_frame.pack(fill='x')
+        
+        status_content = ttk.Frame(status_frame, style='TFrame')
+        status_content.pack(fill='x', padx=15, pady=15)
+        
+        self.status_label = ttk.Label(status_content, text="Durum bilgileri yükleniyor...",
+                                     font=STYLE_CONFIG["font_small"])
+        self.status_label.pack(anchor='w')
 
-        self.recent_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        recent_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-    def _start_focus_session(self):
-        if self.app_instance:
-            self.app_instance.start_focus_session_flow()
-        else:
-            messagebox.showinfo("Bilgi", "Odaklanma oturumu başlatılamadı.", parent=self)
+    def _create_metric_card(self, parent, title, value, row, col):
+        """Metrik kartı oluşturur."""
+        card_frame = ttk.Frame(parent, style='Card.TFrame')
+        card_frame.grid(row=row, column=col, padx=5, pady=5, sticky='ew')
+        
+        # Padding
+        card_content = ttk.Frame(card_frame, style='TFrame')
+        card_content.pack(fill='both', padx=15, pady=15)
+        
+        # Başlık
+        title_label = ttk.Label(card_content, text=title,
+                               font=STYLE_CONFIG["font_small"],
+                               foreground=STYLE_CONFIG["text_secondary"])
+        title_label.pack(anchor='w')
+        
+        # Değer
+        value_label = ttk.Label(card_content, text=value,
+                               font=STYLE_CONFIG["font_h3"])
+        value_label.pack(anchor='w', pady=(5, 0))
+        
+        return value_label
 
     def _load_dashboard_data(self):
-        # Günlük özet yükle
-        today = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        tomorrow = today + datetime.timedelta(days=1)
-        
+        """Dashboard verilerini yükler."""
         try:
+            # Bugünün verilerini al
+            today = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            tomorrow = today + datetime.timedelta(days=1)
+            
             category_totals, total_duration = analyzer.get_analysis_data(today, tomorrow)
-            formatted_duration = reporter.format_duration(total_duration)
-            self.daily_summary_label.config(text=f"Bugün toplam aktif süre: {formatted_duration}")
-        except:
-            self.daily_summary_label.config(text="Bugün toplam aktif süre: Veri yok")
+            
+            # Metrikleri güncelle
+            self.total_time_label.config(text=reporter.format_duration(total_duration))
+            
+            # Aktif uygulama sayısı
+            active_apps = len(category_totals) if category_totals else 0
+            self.active_apps_label.config(text=f"{active_apps} uygulama")
+            
+            # En çok kullanılan kategori
+            if category_totals:
+                top_category = max(category_totals.items(), key=lambda x: x[1])
+                self.top_category_label.config(text=top_category[0])
+            else:
+                self.top_category_label.config(text="Veri yok")
+            
+            # Verimlilik skoru (basit hesaplama)
+            productivity_score = self._calculate_productivity_score(category_totals, total_duration)
+            self.productivity_score_label.config(text=f"{productivity_score}/100")
+            
+            # Son aktiviteleri yükle
+            self._load_recent_activities()
+            
+            # Sistem durumunu güncelle
+            self._update_system_status()
+            
+        except Exception as e:
+            logging.error(f"Dashboard verileri yüklenirken hata: {e}")
 
-        # Son aktiviteleri yükle
-        self._load_recent_activities()
+    def _calculate_productivity_score(self, category_totals, total_duration):
+        """Basit verimlilik skoru hesaplar."""
+        if not category_totals or total_duration == 0:
+            return 0
+        
+        # Verimli kategoriler (örnekler)
+        productive_categories = ['Work', 'Development', 'Design', 'Education', 'Writing']
+        
+        productive_time = 0
+        for category, duration in category_totals.items():
+            if any(prod_cat.lower() in category.lower() for prod_cat in productive_categories):
+                productive_time += duration
+        
+        # Yüzdelik hesaplama
+        score = int((productive_time / total_duration) * 100) if total_duration > 0 else 0
+        return min(100, score)  # Maksimum 100
 
     def _load_recent_activities(self):
-        for item in self.recent_tree.get_children():
-            self.recent_tree.delete(item)
-
+        """Son aktiviteleri yükler."""
         try:
+            self.recent_tree.delete(*self.recent_tree.get_children())
+            
             recent_logs = database.get_recent_usage_logs(limit=20)
+            
             for log in recent_logs:
                 start_time = datetime.datetime.fromtimestamp(log['start_time'])
                 time_str = start_time.strftime('%H:%M')
+                
                 app_name = log['process_name']
-                category = database.get_category_for_process(app_name)
+                if len(app_name) > 20:
+                    app_name = app_name[:17] + "..."
+                
+                category = database.get_category_for_process(log['process_name'])
                 duration = reporter.format_duration(log['duration_seconds'])
                 
                 self.recent_tree.insert("", "end", values=(time_str, app_name, category, duration))
+                
         except Exception as e:
             logging.error(f"Son aktiviteler yüklenirken hata: {e}")
+            # Hata durumunda placeholder göster
             self.recent_tree.insert("", "end", values=("--", "Veri yüklenemedi", "--", "--"))
+
+    def _update_system_status(self):
+        """Sistem durumunu günceller."""
+        try:
+            # Basit sistem durumu bilgileri
+            with database.get_db_connection() as conn:
+                cursor = conn.cursor()
+                
+                # Toplam kayıt sayısı
+                cursor.execute("SELECT COUNT(*) FROM usage_logs")
+                total_logs = cursor.fetchone()[0]
+                
+                # Son 24 saatteki aktivite
+                yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
+                cursor.execute("SELECT COUNT(*) FROM usage_logs WHERE start_time > ?", 
+                              (yesterday.timestamp(),))
+                recent_activity = cursor.fetchone()[0]
+                
+                # Toplam uygulama sayısı
+                cursor.execute("SELECT COUNT(DISTINCT process_name) FROM usage_logs")
+                total_apps = cursor.fetchone()[0]
+            
+            status_text = (f"• Toplam {total_logs:,} kullanım kaydı\n"
+                          f"• Son 24 saatte {recent_activity} aktivite\n"
+                          f"• {total_apps} farklı uygulama takip ediliyor")
+            
+            self.status_label.config(text=status_text)
+            
+        except Exception as e:
+            logging.error(f"Sistem durumu güncellenirken hata: {e}")
+            self.status_label.config(text="Sistem durumu alınamadı")
+
+    def _start_focus_session(self):
+        """Odaklanma oturumu başlatır."""
+        if self.app_instance and hasattr(self.app_instance, 'start_focus_session_flow'):
+            self.app_instance.start_focus_session_flow()
+        else:
+            messagebox.showinfo("Bilgi", "Odaklanma oturumu özelliği kullanılamıyor.", parent=self)
+
+    def _auto_refresh(self):
+        """Otomatik veri yenileme."""
+        try:
+            self._load_dashboard_data()
+            # 5 dakika sonra tekrar çalıştır
+            self.after(300000, self._auto_refresh)
+        except:
+            # Hata olursa 10 dakika sonra tekrar dene
+            self.after(600000, self._auto_refresh)
+
+# Yardımcı fonksiyonlar ve sınıflar
+
+def show_error_dialog(parent, title, message):
+    """Gelişmiş hata dialogu gösterir."""
+    error_window = BaseWindow(parent, f"Hata - {title}", "400x300")
+    
+    content = ttk.Frame(error_window.content_frame, style='TFrame')
+    content.pack(fill='both', expand=True, padx=20, pady=20)
+    
+    # Hata ikonu (Unicode)
+    icon_label = ttk.Label(content, text="⚠️", font=("Segoe UI", 32))
+    icon_label.pack(pady=(0, 15))
+    
+    # Başlık
+    title_label = ttk.Label(content, text=title, font=STYLE_CONFIG["font_h2"])
+    title_label.pack(pady=(0, 10))
+    
+    # Mesaj
+    message_text = tk.Text(content, wrap=tk.WORD, height=6, 
+                          font=STYLE_CONFIG["font_normal"],
+                          bg=STYLE_CONFIG["bg_card"],
+                          fg=STYLE_CONFIG["text_primary"],
+                          relief='flat', bd=0)
+    message_text.pack(fill='both', expand=True, pady=(0, 15))
+    message_text.insert('1.0', message)
+    message_text.config(state='disabled')
+    
+    # Kapat butonu
+    error_window.add_action_buttons([
+        {'text': 'Kapat', 'command': error_window.destroy, 'style': 'Accent.TButton'}
+    ])
+
+def show_success_dialog(parent, title, message):
+    """Başarı dialogu gösterir."""
+    success_window = BaseWindow(parent, f"Başarılı - {title}", "350x250")
+    
+    content = ttk.Frame(success_window.content_frame, style='TFrame')
+    content.pack(fill='both', expand=True, padx=20, pady=20)
+    
+    # Başarı ikonu
+    icon_label = ttk.Label(content, text="✅", font=("Segoe UI", 32))
+    icon_label.pack(pady=(0, 15))
+    
+    # Başlık
+    title_label = ttk.Label(content, text=title, font=STYLE_CONFIG["font_h2"])
+    title_label.pack(pady=(0, 10))
+    
+    # Mesaj
+    message_label = ttk.Label(content, text=message, 
+                             font=STYLE_CONFIG["font_normal"],
+                             wraplength=300, justify='center')
+    message_label.pack(pady=(0, 15))
+    
+    # Kapat butonu
+    success_window.add_action_buttons([
+        {'text': 'Tamam', 'command': success_window.destroy, 'style': 'Success.TButton'}
+    ])
+
+# Ana uygulama başlatma fonksiyonu
+def initialize_ui():
+    """UI sistemini başlatır."""
+    try:
+        apply_global_styles()
+        logging.info("UI başarıyla başlatıldı")
+        return True
+    except Exception as e:
+        logging.error(f"UI başlatılırken hata: {e}")
+        return False
+
+# Modül yüklendiğinde çalışacak
+if __name__ == "__main__":
+    # Test için basit bir demo
+    root = tk.Tk()
+    root.withdraw()  # Ana pencereyi gizle
+    
+    apply_global_styles()
+    
+    # Test penceresi
+    test_window = MainDashboardWindow(master=root)
+    test_window.mainloop()
+# kognita/ui.py - Geliştirilmiş ve Optimize Edilmiş UI
+
+import logging
+import tkinter as tk
+from tkinter import ttk, messagebox, Listbox, StringVar, Frame, Label, Entry, Button, simpledialog, OptionMenu, filedialog 
+import datetime
+import os
+import sys
+from PIL import Image, ImageTk
+import matplotlib.pyplot as plt 
+from matplotlib.figure import Figure 
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg 
+
+# Yerel modülleri içe aktar
+from . import analyzer, database, reporter 
+
+# Matplotlib kontrolü
+MATPLOTLIB_AVAILABLE = True
+try:
+    import matplotlib
+    matplotlib.use('TkAgg')  # Backend ayarla
+except ImportError:
+    MATPLOTLIB_AVAILABLE = False
+    logging.warning("Matplotlib kütüphanesi bulunamadı. Grafik özellikleri devre dışı.")
+
+# Modern UI Konfigürasyonu
+STYLE_CONFIG = {
+    # Fontlar
+    "font_family": "Segoe UI",
+    "font_normal": ("Segoe UI", 10),
+    "font_bold": ("Segoe UI", 10, "bold"),
+    "font_title": ("Segoe UI Light", 18),
+    "font_h2": ("Segoe UI Semibold", 14),
+    "font_h3": ("Segoe UI", 12, "bold"),
+    "font_small": ("Segoe UI", 9),
+
+    # Modern Renk Paleti
+    "bg_color": "#F8F9FA",              # Ana arka plan (açık gri-beyaz)
+    "bg_secondary": "#FFFFFF",          # İkincil arka plan (beyaz)
+    "bg_card": "#FFFFFF",               # Kart arka planları
+    
+    "text_primary": "#212529",          # Ana metin (koyu gri)
+    "text_secondary": "#6C757D",        # İkincil metin (orta gri)
+    "text_muted": "#ADB5BD",            # Soluk metin
+    
+    "accent_color": "#0066CC",          # Ana vurgu rengi (mavi)
+    "accent_hover": "#0052A3",          # Hover durumu
+    "accent_light": "#E7F1FF",          # Açık vurgu
+    
+    "success_color": "#28A745",         # Başarı rengi (yeşil)
+    "warning_color": "#FFC107",         # Uyarı rengi (sarı)
+    "danger_color": "#DC3545",          # Hata rengi (kırmızı)
+    "info_color": "#17A2B8",            # Bilgi rengi (mavi-yeşil)
+    
+    "border_color": "#DEE2E6",          # Kenarlık rengi
+    "shadow_color": "#00000010",        # Gölge rengi
+    
+    # Header özel renkler
+    "header_bg": "#FFFFFF",
+    "header_fg": "#212529",
+    "header_border": "#DEE2E6",
+    
+    # Footer renkler
+    "footer_bg": "#F8F9FA",
+    "footer_border": "#DEE2E6",
+    
+    # Buton varsayılanları
+    "button_default_bg": "#6C757D",
+    "button_default_fg": "#FFFFFF",
+}
+
+def resource_path(relative_path):
+    """PyInstaller ile paketlendiğinde varlık dosyalarına doğru yolu bulur."""
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    return os.path.join(base_path, 'assets', relative_path)
+
+def apply_global_styles():
+    """Modern ve tutarlı ttk stillerini uygular."""
+    style = ttk.Style()
+    style.theme_use('clam')
+    
+    # Temel widget stilleri
+    style.configure('TLabel', 
+                   font=STYLE_CONFIG["font_normal"], 
+                   background=STYLE_CONFIG["bg_color"],
+                   foreground=STYLE_CONFIG["text_primary"])
+    
+    style.configure('TButton', 
+                   font=STYLE_CONFIG["font_normal"],
+                   background=STYLE_CONFIG["button_default_bg"],
+                   foreground=STYLE_CONFIG["button_default_fg"],
+                   borderwidth=0,
+                   focuscolor='none',
+                   padding=(12, 8))
+    style.map('TButton', 
+             background=[('active', STYLE_CONFIG["accent_hover"]),
+                        ('pressed', STYLE_CONFIG["accent_color"])])
+    
+    # Özel buton stilleri
+    style.configure('Accent.TButton',
+                   background=STYLE_CONFIG["accent_color"],
+                   foreground='white',
+                   font=STYLE_CONFIG["font_bold"])
+    style.map('Accent.TButton',
+             background=[('active', STYLE_CONFIG["accent_hover"]),
+                        ('pressed', STYLE_CONFIG["accent_color"])])
+    
+    style.configure('Success.TButton',
+                   background=STYLE_CONFIG["success_color"],
+                   foreground='white')
+    style.map('Success.TButton',
+             background=[('active', '#218838')])
+    
+    style.configure('Danger.TButton',
+                   background=STYLE_CONFIG["danger_color"],
+                   foreground='white')
+    style.map('Danger.TButton',
+             background=[('active', '#C82333')])
+    
+    # Frame stilleri
+    style.configure('TFrame', 
+                   background=STYLE_CONFIG["bg_color"],
+                   relief='flat')
+    
+    style.configure('Card.TFrame',
+                   background=STYLE_CONFIG["bg_card"],
+                   relief='solid',
+                   borderwidth=1)
+    
+    # Entry ve Combobox
+    style.configure('TEntry',
+                   fieldbackground=STYLE_CONFIG["bg_secondary"],
+                   borderwidth=1,
+                   relief='solid',
+                   padding=8)
+    
+    style.configure('TCombobox',
+                   fieldbackground=STYLE_CONFIG["bg_secondary"],
+                   borderwidth=1,
+                   relief='solid',
+                   padding=8)
+    
+    # Treeview
+    style.configure('Treeview',
+                   background=STYLE_CONFIG["bg_secondary"],
+                   fieldbackground=STYLE_CONFIG["bg_secondary"],
+                   foreground=STYLE_CONFIG["text_primary"],
+                   rowheight=28,
+                   borderwidth=1,
+                   relief='solid')
+    style.configure('Treeview.Heading',
+                   background=STYLE_CONFIG["bg_color"],
+                   foreground=STYLE_CONFIG["text_primary"],
+                   font=STYLE_CONFIG["font_bold"],
+                   relief='flat',
+                   borderwidth=1)
+    style.map('Treeview',
+             background=[('selected', STYLE_CONFIG["accent_color"])],
+             foreground=[('selected', 'white')])
+    
+    # Notebook
+    style.configure('TNotebook',
+                   background=STYLE_CONFIG["bg_color"],
+                   borderwidth=0)
+    style.configure('TNotebook.Tab',
+                   background=STYLE_CONFIG["bg_color"],
+                   foreground=STYLE_CONFIG["text_secondary"],
+                   padding=[12, 8],
+                   font=STYLE_CONFIG["font_normal"])
+    style.map('TNotebook.Tab',
+             background=[('selected', STYLE_CONFIG["accent_color"]),
+                        ('active', STYLE_CONFIG["accent_light"])],
+             foreground=[('selected', 'white'),
+                        ('active', STYLE_CONFIG["accent_color"])])
+    
+    # LabelFrame
+    style.configure('TLabelframe',
+                   background=STYLE_CONFIG["bg_color"],
+                   borderwidth=1,
+                   relief='solid',
+                   bordercolor=STYLE_CONFIG["border_color"])
+    style.configure('TLabelframe.Label',
+                   background=STYLE_CONFIG["bg_color"],
+                   foreground=STYLE_CONFIG["text_primary"],
+                   font=STYLE_CONFIG["font_bold"])
+
+class BaseWindow(tk.Toplevel):
+    """Modern ve tutarlı pencere tasarımı için temel sınıf."""
+    
+    def __init__(self, master, title, geometry, resizable=False):
+        super().__init__(master)
+        self.title(title)
+        self.geometry(geometry)
+        self.resizable(resizable, resizable)
+        self.configure(bg=STYLE_CONFIG["bg_color"])
+        
+        # Modern görünüm için başlık çubuğunu kaldır
+        self.overrideredirect(True)
+        
+        # Pencereyi ortala
+        self.update_idletasks()
+        self.center_window()
+        
+        # Sürükleme değişkenleri
+        self._drag_start_x = 0
+        self._drag_start_y = 0
+        
+        # Modern pencere yapısı
+        self._create_window_structure(title)
+        
+        # Gölge efekti (Windows 10+ için)
+        try:
+            self.attributes('-topmost', False)
+            self.lift()
+        except:
+            pass
+
+    def _create_window_structure(self, title):
+        """Modern pencere yapısını oluşturur."""
+        # Ana container
+        self.main_container = ttk.Frame(self, style='TFrame')
+        self.main_container.pack(fill='both', expand=True, padx=1, pady=1)
+        
+        # Header (başlık çubuğu)
+        self.header_frame = ttk.Frame(self.main_container, style='TFrame', height=50)
+        self.header_frame.pack(fill='x', side='top')
+        self.header_frame.pack_propagate(False)
+        self.header_frame.configure(style='Header.TFrame')
+        
+        # Header stillendirme
+        style = ttk.Style()
+        style.configure('Header.TFrame',
+                       background=STYLE_CONFIG["header_bg"],
+                       relief='flat')
+        
+        # İçerik alanı
+        self.content_frame = ttk.Frame(self.main_container, style='TFrame')
+        self.content_frame.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Footer
+        self.footer_frame = ttk.Frame(self.main_container, style='TFrame', height=60)
+        self.footer_frame.pack(fill='x', side='bottom')
+        self.footer_frame.pack_propagate(False)
+        
+        # Header içeriği
+        self._populate_header(title)
+        
+        # Sürükleme olayları
+        self.header_frame.bind("<ButtonPress-1>", self.start_drag)
+        self.header_frame.bind("<B1-Motion>", self.do_drag)
+
+    def _populate_header(self, title):
+        """Modern header tasarımı."""
+        # Sol taraf - Logo ve başlık
+        left_frame = ttk.Frame(self.header_frame, style='Header.TFrame')
+        left_frame.pack(side='left', fill='y', expand=True)
+        
+        # Logo (32x32 PNG gerekli - assets/logo.png)
+        try:
+            logo_image = Image.open(resource_path("logo.png")).resize((28, 28), Image.Resampling.LANCZOS)
+            self.logo_photo = ImageTk.PhotoImage(logo_image)
+            logo_label = Label(left_frame, image=self.logo_photo, 
+                              bg=STYLE_CONFIG["header_bg"], bd=0)
+            logo_label.pack(side='left', padx=(15, 8), pady=11)
+            
+            # Logo sürükleme
+            logo_label.bind("<ButtonPress-1>", self.start_drag)
+            logo_label.bind("<B1-Motion>", self.do_drag)
+        except Exception as e:
+            logging.warning(f"Logo yüklenemedi: {e}")
+        
+        # Başlık
+        title_label = Label(left_frame, text=title, 
+                           font=STYLE_CONFIG["font_title"],
+                           bg=STYLE_CONFIG["header_bg"], 
+                           fg=STYLE_CONFIG["header_fg"],
+                           bd=0)
+        title_label.pack(side='left', pady=11)
+        title_label.bind("<ButtonPress-1>", self.start_drag)
+        title_label.bind("<B1-Motion>", self.do_drag)
+        
+        # Sağ taraf - Kontroller
+        right_frame = ttk.Frame(self.header_frame, style='Header.TFrame')
+        right_frame.pack(side='right', fill='y')
+        
+        # Minimize butonu (opsiyonel)
+        self.minimize_btn = self._create_header_button(right_frame, "─", self.minimize_window)
+        self.minimize_btn.pack(side='right', padx=2, pady=8)
+        
+        # Kapat butonu
+        self.close_btn = self._create_header_button(right_frame, "✕", self.destroy, danger=True)
+        self.close_btn.pack(side='right', padx=(2, 12), pady=8)
+
+    def _create_header_button(self, parent, text, command, danger=False):
+        """Header için özel buton."""
+        if danger:
+            bg_color = STYLE_CONFIG["header_bg"]
+            hover_color = STYLE_CONFIG["danger_color"]
+            fg_color = STYLE_CONFIG["text_secondary"]
+        else:
+            bg_color = STYLE_CONFIG["header_bg"]
+            hover_color = STYLE_CONFIG["accent_light"]
+            fg_color = STYLE_CONFIG["text_secondary"]
+            
+        btn = Button(parent, text=text, command=command,
+                    bg=bg_color, fg=fg_color,
+                    font=("Segoe UI", 9), bd=0, relief='flat',
+                    width=3, height=1,
+                    activebackground=hover_color,
+                    activeforeground='white' if danger else STYLE_CONFIG["accent_color"])
+        
+        # Hover efektleri
+        def on_enter(e):
+            btn.configure(bg=hover_color, 
+                         fg='white' if danger else STYLE_CONFIG["accent_color"])
+        
+        def on_leave(e):
+            btn.configure(bg=bg_color, fg=fg_color)
+        
+        btn.bind("<Enter>", on_enter)
+        btn.bind("<Leave>", on_leave)
+        
+        return btn
+
+    def minimize_window(self):
+        """Pencereyi simge durumuna küçült."""
+        self.iconify()
+
+    def start_drag(self, event):
+        self._drag_start_x = event.x
+        self._drag_start_y = event.y
+
+    def do_drag(self, event):
+        x = self.winfo_x() + event.x - self._drag_start_x
+        y = self.winfo_y() + event.y - self._drag_start_y
+        self.geometry(f"+{x}+{y}")
+
+    def center_window(self):
+        """Pencereyi ekranın ortasına yerleştirir."""
+        self.update_idletasks()
+        width = self.winfo_width()
+        height = self.winfo_height()
+        
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        
+        x = (screen_width - width) // 2
+        y = (screen_height - height) // 2
+        
+        self.geometry(f'{width}x{height}+{x}+{y}')
+
+    def add_action_buttons(self, buttons_config):
+        """Footer'a eylem butonları ekler."""
+        for btn_config in buttons_config:
+            btn = ttk.Button(self.footer_frame, 
+                           text=btn_config.get('text', 'Button'),
+                           command=btn_config.get('command', lambda: None),
+                           style=btn_config.get('style', 'TButton'))
+            btn.pack(side='right', padx=8, pady=15)
+
+class WelcomeWindow(BaseWindow):
+    """Hoş geldin penceresi - modern tasarım."""
+    
+    def __init__(self, master, on_close_callback):
+        super().__init__(master, "Kognita'ya Hoş Geldiniz", "520x400")
+        self.master = master
+        self.on_close_callback = on_close_callback
+        self.grab_set()
+        self.protocol("WM_DELETE_WINDOW", self._on_closing)
+        
+        self._create_welcome_content()
+        self.lift()
+        self.attributes('-topmost', True)
+        self.focus_force()
+
+    def _create_welcome_content(self):
+        """Hoş geldin içeriği."""
+        # Ana içerik alanı
+        content = ttk.Frame(self.content_frame, style='Card.TFrame')
+        content.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Üst alan - Logo ve başlık
+        top_frame = ttk.Frame(content, style='TFrame')
+        top_frame.pack(fill='x', pady=(30, 20))
+        
+        # Büyük logo (64x64 PNG gerekli - assets/welcome_logo.png)
+        try:
+            welcome_logo = Image.open(resource_path("welcome_logo.png")).resize((64, 64), Image.Resampling.LANCZOS)
+            self.welcome_logo_photo = ImageTk.PhotoImage(welcome_logo)
+            logo_label = Label(top_frame, image=self.welcome_logo_photo, 
+                              bg=STYLE_CONFIG["bg_card"], bd=0)
+            logo_label.pack(pady=(0, 15))
+        except Exception as e:
+            logging.warning(f"Welcome logo yüklenemedi: {e}")
+        
+        # Ana başlık
+        title_label = Label(content, text="Kognita'ya Hoş Geldiniz!",
+                           font=("Segoe UI Light", 24, "bold"),
+                           bg=STYLE_CONFIG["bg_card"],
+                           fg=STYLE_CONFIG["accent_color"])
+        title_label.pack(pady=(0, 10))
+        
+        # Alt başlık
+        subtitle_label = Label(content, 
+                              text="Dijital Yaşamınızı Optimize Edin",
+                              font=STYLE_CONFIG["font_h2"],
+                              bg=STYLE_CONFIG["bg_card"],
+                              fg=STYLE_CONFIG["text_secondary"])
+        subtitle_label.pack(pady=(0, 20))
+        
+        # Açıklama metni
+        desc_text = """Kognita, bilgisayar kullanım alışkanlıklarınızı akıllıca analiz eder ve size kişiselleştirilmiş öneriler sunar.
+
+• Detaylı kullanım raporları
+• Akıllı hedef belirleme sistemi  
+• Odaklanma modu ve bildirimler
+• Kategori bazlı analiz ve takip"""
+        
+        desc_label = Label(content, text=desc_text,
+                          font=STYLE_CONFIG["font_normal"],
+                          bg=STYLE_CONFIG["bg_card"],
+                          fg=STYLE_CONFIG["text_primary"],
+                          justify='left')
+        desc_label.pack(pady=(0, 30), padx=30)
+        
+        # Başlat butonu
+        start_btn = ttk.Button(content, text="Kognita'yı Başlat",
+                              command=self._on_closing,
+                              style='Accent.TButton')
+        start_btn.pack(pady=20)
+
+    def _on_closing(self):
+        self.grab_release()
+        self.on_close_callback()
+        self.destroy()
+
+class ReportWindow(BaseWindow):
+    """Geliştirilmiş rapor penceresi."""
+    
+    def __init__(self, master=None):
+        super().__init__(master, "Kognita - Analiz ve Raporlar", "1000x750", resizable=True)
+        self.current_report_range = "today"
+        
+        self._create_report_interface()
+        self._load_report_data()
+        
+        # Footer butonları
+        self.add_action_buttons([
+            {'text': 'Kapat', 'command': self.destroy, 'style': 'TButton'}
+        ])
+
+    def _create_report_interface(self):
+        """Modern rapor arayüzü."""
+        # Üst kontrol paneli
+        control_panel = ttk.Frame(self.content_frame, style='Card.TFrame')
+        control_panel.pack(fill='x', pady=(0, 15))
+        
+        # İç padding
+        control_inner = ttk.Frame(control_panel, style='TFrame')
+        control_inner.pack(fill='x', padx=20, pady=15)
+        
+        # Sol taraf - Rapor aralığı
+        left_controls = ttk.Frame(control_inner, style='TFrame')
+        left_controls.pack(side='left', fill='x', expand=True)
+        
+        ttk.Label(left_controls, text="Rapor Aralığı:",
+                 font=STYLE_CONFIG["font_bold"]).pack(side='left', padx=(0, 8))
+        
+        self.range_var = StringVar(self)
+        range_options = [
+            ("Bugün", "today"),
+            ("Son 7 Gün", "last_7_days"), 
+            ("Bu Hafta", "this_week"),
+            ("Bu Ay", "this_month"),
+            ("Tüm Zamanlar", "all_time")
+        ]
+        
+        self.range_combobox = ttk.Combobox(left_controls, textvariable=self.range_var,
+                                          values=[opt[0] for opt in range_options],
+                                          state="readonly", width=15)
+        self.range_combobox.set("Bugün")
+        self.range_combobox.pack(side='left', padx=(0, 15))
+        self.range_combobox.bind("<<ComboboxSelected>>", self._on_range_change)
+        
+        self.range_mapping = dict(range_options)
+        self.reverse_range_mapping = {v: k for k, v in range_options}
+        
+        # Sağ taraf - Dışa aktarma butonları
+        right_controls = ttk.Frame(control_inner, style='TFrame')
+        right_controls.pack(side='right')
+        
+        ttk.Button(right_controls, text="CSV Dışa Aktar",
+                  command=self._export_data).pack(side='right', padx=5)
+        
+        if MATPLOTLIB_AVAILABLE:
+            ttk.Button(right_controls, text="PDF Rapor",
+                      command=self._export_pdf_report,
+                      style='Accent.TButton').pack(side='right', padx=5)
+        
+        # Özet bilgi paneli
+        self.summary_frame = ttk.LabelFrame(self.content_frame, text="Özet Bilgiler", 
+                                           style='TLabelframe')
+        self.summary_frame.pack(fill='x', pady=(0, 15))
+        
+        summary_inner = ttk.Frame(self.summary_frame, style='TFrame')
+        summary_inner.pack(fill='x', padx=15, pady=10)
+        
+        self.persona_label = ttk.Label(summary_inner, text="Kullanıcı profili hesaplanıyor...",
+                                      font=STYLE_CONFIG["font_bold"],
+                                      foreground=STYLE_CONFIG["accent_color"])
+        self.persona_label.pack(anchor='w', pady=(0, 5))
+        
+        self.total_duration_label = ttk.Label(summary_inner, text="Toplam süre hesaplanıyor...",
+                                             font=STYLE_CONFIG["font_normal"])
+        self.total_duration_label.pack(anchor='w')
+        
+        # Ana içerik alanı - Notebook
+        self.notebook = ttk.Notebook(self.content_frame)
+        self.notebook.pack(expand=True, fill='both')
+        
+        # Sekmeler
+        self._create_category_tab()
+        
+        if MATPLOTLIB_AVAILABLE:
+            self._create_charts_tab()
+            self._create_analysis_tab()
+            self._create_trends_tab()
+            self._create_suggestions_tab()
+
+    def _create_category_tab(self):
+        """Kategori detayları sekmesi."""
+        self.category_tab = ttk.Frame(self.notebook, style='TFrame')
+        self.notebook.add(self.category_tab, text="📊 Kategori Detayları")
+        
+        # Treeview container
+        tree_frame = ttk.Frame(self.category_tab, style='TFrame')
+        tree_frame.pack(fill='both', expand=True, padx=15, pady=15)
+        
+        # Modern treeview
+        self.category_tree = ttk.Treeview(tree_frame, 
+                                         columns=("category", "duration", "percentage", "sessions"),
+                                         show="headings", height=15)
+        
+        # Sütun başlıkları ve genişlikleri
+        self.category_tree.heading("category", text="Kategori")
+        self.category_tree.heading("duration", text="Toplam Süre")  
+        self.category_tree.heading("percentage", text="Yüzde")
+        self.category_tree.heading("sessions", text="Oturum Sayısı")
+        
+        self.category_tree.column("category", width=200, anchor="w")
+        self.category_tree.column("duration", width=120, anchor="center")
+        self.category_tree.column("percentage", width=80, anchor="center")
+        self.category_tree.column("sessions", width=100, anchor="center")
+        
+        # Scrollbar
+        tree_scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", 
+                                      command=self.category_tree.yview)
+        self.category_tree.configure(yscrollcommand=tree_scrollbar.set)
+        
+        self.category_tree.pack(side='left', fill='both', expand=True)
+        tree_scrollbar.pack(side='right', fill='y')
+
+    def _create_charts_tab(self):
+        """Grafikler sekmesi."""
+        self.charts_tab = ttk.Frame(self.notebook, style='TFrame')
+        self.notebook.add(self.charts_tab, text="📈 Grafikler")
+        
+        # Grafik container'ı
+        chart_container = ttk.Frame(self.charts_tab, style='TFrame')
+        chart_container.pack(fill='both', expand=True, padx=15, pady=15)
+        
+        # Grafik notebook
+        self.chart_notebook = ttk.Notebook(chart_container)
+        self.chart_notebook.pack(fill='both', expand=True)
+        
+        # Alt sekmeler
+        self.pie_chart_frame = ttk.Frame(self.chart_notebook, style='TFrame')
+        self.chart_notebook.add(self.pie_chart_frame, text="Pasta Grafik")
+        
+        self.bar_chart_frame = ttk.Frame(self.chart_notebook, style='TFrame')
+        self.chart_notebook.add(self.bar_chart_frame, text="Sütun Grafik")
+        
+        self.hourly_chart_frame = ttk.Frame(self.chart_notebook, style='TFrame')
+        self.chart_notebook.add(self.hourly_chart_frame, text="Saatlik Aktivite")
+        
+        # Grafik canvas'ları için placeholder'lar
+        self.pie_chart_canvas = None
+        self.bar_chart_canvas = None  
+        self.hourly_chart_canvas = None
+
+    def _create_analysis_tab(self):
+        """Analiz sekmesi."""
+        self.analysis_tab = ttk.Frame(self.notebook, style='TFrame')
+        self.notebook.add(self.analysis_tab, text="🔍 Detaylı Analiz")
+        
+        # İçerik alanı
+        analysis_content = ttk.Frame(self.analysis_tab, style='TFrame')
+        analysis_content.pack(fill='both', expand=True, padx=15, pady=15)
+        
+        # Günlük ortalamalar
+        avg_frame = ttk.LabelFrame(analysis_content, text="Son 7 Günlük Ortalamalar",
+                                  style='TLabelframe')
+        avg_frame.pack(fill='x', pady=(0, 15))
+        
+        self.avg_tree = ttk.Treeview(avg_frame, columns=("category", "avg_duration"),
+                                    show="headings", height=6)
+        self.avg_tree.heading("category", text="Kategori")
+        self.avg_tree.heading("avg_duration", text="Günlük Ortalama")
+        self.avg_tree.column("category", width=200)
+        self.avg_tree.column("avg_duration", width=150)
+        self.avg_tree.pack(fill='x', padx=10, pady=10)
+        
+        # En verimli gün
+        productive_frame = ttk.LabelFrame(analysis_content, text="Verimlilik Analizi",
+                                         style='TLabelframe')
+        productive_frame.pack(fill='x')
+        
+        self.productive_label = ttk.Label(productive_frame, text="Analiz ediliyor...",
+                                         font=STYLE_CONFIG["font_normal"])
+        self.productive_label.pack(padx=15, pady=15)
+
+    def _create_trends_tab(self):
+        """Trendler sekmesi."""
+        self.trends_tab = ttk.Frame(self.notebook, style='TFrame')
+        self.notebook.add(self.trends_tab, text="📉 Uygulama Trendleri")
+        
+        # Kontrol paneli
+        trend_control = ttk.Frame(self.trends_tab, style='TFrame')
+        trend_control.pack(fill='x', padx=15, pady=15)
+        
+        ttk.Label(trend_control, text="Uygulama Seçin:",
+                 font=STYLE_CONFIG["font_bold"]).pack(side='left', padx=(0, 10))
+        
+        self.trend_app_var = StringVar()
+        self.trend_app_combo = ttk.Combobox(trend_control, textvariable=self.trend_app_var,
+                                           state="readonly", width=30)
+        self.trend_app_combo.pack(side='left', padx=(0, 10))
+        self.trend_app_combo.bind("<<ComboboxSelected>>", self._load_app_trend)
+        
+        # Grafik alanı
+        self.trend_chart_frame = ttk.Frame(self.trends_tab, style='TFrame')
+        self.trend_chart_frame.pack(fill='both', expand=True, padx=15)
+        
+        self.trend_chart_canvas = None
+
+    def _create_suggestions_tab(self):
+        """Öneriler sekmesi."""
+        self.suggestions_tab = ttk.Frame(self.notebook, style='TFrame')
+        self.notebook.add(self.suggestions_tab, text="💡 Kişisel Öneriler")
+        
+        # İçerik alanı
+        suggestions_content = ttk.Frame(self.suggestions_tab, style='TFrame')
+        suggestions_content.pack(fill='both', expand=True, padx=15, pady=15)
+        
+        # Başlık
+        title_label = ttk.Label(suggestions_content, 
+                               text="Size Özel Öneriler",
+                               font=STYLE_CONFIG["font_h2"])
+        title_label.pack(pady=(0, 15))
+        
+        # Öneriler text widget
+        suggestions_frame = ttk.Frame(suggestions_content, style='Card.TFrame')
+        suggestions_frame.pack(fill='both', expand=True)
+        
+        self.suggestions_text = tk.Text(suggestions_frame, wrap=tk.WORD, 
+                                       font=STYLE_CONFIG["font_normal"],
+                                       bg=STYLE_CONFIG["bg_card"],
+                                       fg=STYLE_CONFIG["text_primary"],
+                                       relief='flat', bd=0,
+                                       padx=20, pady=20)
+        self.suggestions_text.pack(fill='both', expand=True, padx=1, pady=1)
+        
+        # Scrollbar
+        suggestions_scroll = ttk.Scrollbar(suggestions_frame, orient="vertical",
+                                          command=self.suggestions_text.yview)
+        self.suggestions_text.configure(yscrollcommand=suggestions_scroll.set)
+        suggestions_scroll.pack(side='right', fill='y')
+
+    def _on_range_change(self, event=None):
+        """Rapor aralığı değiştiğinde."""
+        selected_display = self.range_combobox.get()
+        self.current_report_range = self.range_mapping.get(selected_display, "today")
+        self._load_report_data()
+
+    def _get_date_range(self, selection):
+        """Seçime göre tarih aralığını döndürür."""
+        today = datetime.datetime.now()
+        start_date = None
+        end_date = today
+
+        if selection == "today":
+            start_date = today.replace(hour=0, minute=0, second=0, microsecond=0)
+        elif selection == "last_7_days":
+            start_date = today - datetime.timedelta(days=7)
+            start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        elif selection == "this_week":
+            start_date = today - datetime.timedelta(days=today.weekday())
+            start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        elif selection == "this_month":
+            start_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        elif selection == "all_time":
+            start_date = datetime.datetime(2020, 1, 1)
+
+        end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+        return start_date, end_date
+
+    def _load_report_data(self):
+        """Rapor verilerini yükler."""
+        try:
+            start_date, end_date = self._get_date_range(self.current_report_range)
+            category_totals, total_duration = analyzer.get_analysis_data(start_date, end_date)
+
+            # Özet bilgileri güncelle
+            persona_text, table_data = reporter.get_report_data(category_totals, total_duration)
+            self.persona_label.config(text=persona_text)
+            self.total_duration_label.config(text=f"Toplam Aktif Süre: {reporter.format_duration(total_duration)}")
+
+            # Kategori tablosunu güncelle
+            self._update_category_table(table_data, category_totals)
+
+            # Grafikleri güncelle
+            if MATPLOTLIB_AVAILABLE:
+                self._update_charts(category_totals, total_duration)
+                self._update_analysis_data()
+                self._update_trends_data()
+                self._update_suggestions(category_totals, total_duration)
+
+        except Exception as e:
+            logging.error(f"Rapor verileri yüklenirken hata: {e}")
+            messagebox.showerror("Hata", f"Veriler yüklenirken bir hata oluştu: {e}", parent=self)
+
+    def _update_category_table(self, table_data, category_totals):
+        """Kategori tablosunu günceller."""
+        # Mevcut verileri temizle
+        for item in self.category_tree.get_children():
+            self.category_tree.delete(item)
+
+        if table_data:
+            for i, row in enumerate(table_data):
+                # Oturum sayısını hesapla (basit yaklaşım)
+                category_name = row[0]
+                sessions = len(database.get_sessions_for_category(category_name)) if hasattr(database, 'get_sessions_for_category') else "-"
+                
+                # Satırı ekle
+                self.category_tree.insert("", "end", values=(row[0], row[1], row[2], sessions))
+                
+                # Renklendirme (alternatif satırlar)
+                if i % 2 == 0:
+                    self.category_tree.set(self.category_tree.get_children()[-1], "category", row[0])
+        else:
+            self.category_tree.insert("", "end", values=("Veri Yok", "", "", ""))
+
+    def _update_charts(self, category_totals, total_duration):
+        """Grafikleri günceller."""
+        self._draw_pie_chart(category_totals, total_duration)
+        self._draw_bar_chart(category_totals, total_duration)
+        self._draw_hourly_chart()
+
+    def _draw_pie_chart(self, category_totals, total_duration):
+        """Pasta grafiği çizer."""
+        if self.pie_chart_canvas:
+            self.pie_chart_canvas.get_tk_widget().destroy()
+            self.pie_chart_canvas = None
+
+        labels, sizes = reporter.get_chart_data(category_totals, total_duration)
+
+        if not labels or not sizes:
+            no_data_label = ttk.Label(self.pie_chart_frame, 
+                                     text="Bu aralık için yeterli veri bulunmuyor.",
+                                     font=STYLE_CONFIG["font_normal"])
+            no_data_label.pack(expand=True)
+            return
+
+        # Modern grafik stili
+        fig = Figure(figsize=(8, 6), dpi=100, facecolor=STYLE_CONFIG["bg_card"])
+        ax = fig.add_subplot(111)
+        ax.set_facecolor(STYLE_CONFIG["bg_card"])
+
+        # Modern renkler
+        colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F']
+        
+        wedges, texts, autotexts = ax.pie(sizes, labels=labels, autopct='%1.1f%%',
+                                         colors=colors[:len(labels)], startangle=90,
+                                         textprops={'fontsize': 10, 'color': STYLE_CONFIG["text_primary"]})
+
+        # Başlık
+        ax.set_title('Kategori Dağılımı', fontsize=14, fontweight='bold', 
+                    color=STYLE_CONFIG["text_primary"], pad=20)
+
+        # Yüzde metinlerini beyaz yap
+        for autotext in autotexts:
+            autotext.set_color('white')
+            autotext.set_fontweight('bold')
+
+        fig.tight_layout()
+
+        self.pie_chart_canvas = FigureCanvasTkAgg(fig, master=self.pie_chart_frame)
+        self.pie_chart_canvas.draw()
+        self.pie_chart_canvas.get_tk_widget().pack(fill='both', expand=True)
+
+    def _draw_bar_chart(self, category_totals, total_duration):
+        """Sütun grafiği çizer."""
+        if self.bar_chart_canvas:
+            self.bar_chart_canvas.get_tk_widget().destroy()
+            self.bar_chart_canvas = None
+
+        if not category_totals:
+            no_data_label = ttk.Label(self.bar_chart_frame,
+                                     text="Bu aralık için yeterli veri bulunmuyor.",
+                                     font=STYLE_CONFIG["font_normal"])
+            no_data_label.pack(expand=True)
+            return
+
+        # Verileri hazırla
+        categories = list(category_totals.keys())[:8]  # İlk 8 kategori
+        durations = [category_totals[cat] / 60 for cat in categories]  # Dakikaya çevir
+
+        fig = Figure(figsize=(10, 6), dpi=100, facecolor=STYLE_CONFIG["bg_card"])
+        ax = fig.add_subplot(111)
+        ax.set_facecolor(STYLE_CONFIG["bg_card"])
+
+        # Modern sütun grafiği
+        bars = ax.bar(categories, durations, color=STYLE_CONFIG["accent_color"], alpha=0.8)
+
+        # Stil düzenlemeleri
+        ax.set_xlabel('Kategoriler', fontsize=12, color=STYLE_CONFIG["text_primary"])
+        ax.set_ylabel('Süre (Dakika)', fontsize=12, color=STYLE_CONFIG["text_primary"])
+        ax.set_title('Kategori Bazlı Kullanım Süreleri', fontsize=14, fontweight='bold',
+                    color=STYLE_CONFIG["text_primary"], pad=20)
+
+        # X ekseni etiketlerini döndür
+        plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
+        
+        # Grid ekle
+        ax.grid(True, alpha=0.3, axis='y')
+        ax.set_axisbelow(True)
+
+        # Renkleri ayarla
+        ax.tick_params(colors=STYLE_CONFIG["text_primary"])
+        ax.spines['bottom'].set_color(STYLE_CONFIG["border_color"])
+        ax.spines['left'].set_color(STYLE_CONFIG["border_color"])
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+
+        fig.tight_layout()
+
+        self.bar_chart_canvas = FigureCanvasTkAgg(fig, master=self.bar_chart_frame)
+        self.bar_chart_canvas.draw()
+        self.bar_chart_canvas.get_tk_widget().pack(fill='both', expand=True)
+
+    def _draw_hourly_chart(self):
+        """Saatlik aktivite grafiği çizer."""
+        if self.hourly_chart_canvas:
+            self.hourly_chart_canvas.get_tk_widget().destroy()
+            self.hourly_chart_canvas = None
+
+        try:
+            hourly_data = analyzer.get_hourly_activity()
+            
+            if not hourly_data:
+                no_data_label = ttk.Label(self.hourly_chart_frame,
+                                         text="Saatlik aktivite için yeterli veri bulunmuyor.",
+                                         font=STYLE_CONFIG["font_normal"])
+                no_data_label.pack(expand=True)
+                return
+
+            hours = list(range(24))
+            durations = [hourly_data.get(h, 0) / 60 for h in hours]  # Dakikaya çevir
+
+            fig = Figure(figsize=(12, 6), dpi=100, facecolor=STYLE_CONFIG["bg_card"])
+            ax = fig.add_subplot(111)
+            ax.set_facecolor(STYLE_CONFIG["bg_card"])
+
+            # Line chart
+            ax.plot(hours, durations, color=STYLE_CONFIG["accent_color"], linewidth=2, marker='o', markersize=4)
+            ax.fill_between(hours, durations, alpha=0.3, color=STYLE_CONFIG["accent_color"])
+
+            ax.set_xlabel('Saat', fontsize=12, color=STYLE_CONFIG["text_primary"])
+            ax.set_ylabel('Ortalama Süre (Dakika)', fontsize=12, color=STYLE_CONFIG["text_primary"])
+            ax.set_title('Günlük Saatlik Aktivite Dağılımı', fontsize=14, fontweight='bold',
+                        color=STYLE_CONFIG["text_primary"], pad=20)
+
+            ax.set_xticks(range(0, 24, 2))
+            ax.grid(True, alpha=0.3)
+            ax.set_axisbelow(True)
+
+            # Renkleri ayarla
+            ax.tick_params(colors=STYLE_CONFIG["text_primary"])
+            ax.spines['bottom'].set_color(STYLE_CONFIG["border_color"])
+            ax.spines['left'].set_color(STYLE_CONFIG["border_color"])
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+
+            fig.tight_layout()
+
+            self.hourly_chart_canvas = FigureCanvasTkAgg(fig, master=self.hourly_chart_frame)
+            self.hourly_chart_canvas.draw()
+            self.hourly_chart_canvas.get_tk_widget().pack(fill='both', expand=True)
+
+        except Exception as e:
+            logging.error(f"Saatlik grafik çizilirken hata: {e}")
+
+    def _update_analysis_data(self):
+        """Analiz sekmesi verilerini günceller."""
+        try:
+            # Günlük ortalamalar
+            for item in self.avg_tree.get_children():
+                self.avg_tree.delete(item)
+
+            daily_avg_data = analyzer.get_daily_average_usage_by_category(num_days=7)
+            if daily_avg_data:
+                sorted_data = sorted(daily_avg_data.items(), key=lambda item: item[1], reverse=True)
+                for category, duration in sorted_data[:10]:  # İlk 10 kategori
+                    formatted_duration = reporter.format_duration(duration)
+                    self.avg_tree.insert("", "end", values=(category, formatted_duration))
+            else:
+                self.avg_tree.insert("", "end", values=("Veri Yok", ""))
+
+            # En verimli gün
+            most_productive_day, max_time = analyzer.get_most_productive_day()
+            if most_productive_day != "Yeterli Veri Yok":
+                productive_text = f"En verimli gününüz: {most_productive_day}\nToplam verimli süre: {reporter.format_duration(max_time)}"
+            else:
+                productive_text = "En verimli gün analizi için yeterli veri bulunmuyor."
+                
+            self.productive_label.config(text=productive_text)
+
+        except Exception as e:
+            logging.error(f"Analiz verileri güncellenirken hata: {e}")
+
+    def _update_trends_data(self):
+        """Trendler sekmesi verilerini günceller."""
+        try:
+            # Uygulama listesini güncelle
+            all_processes = sorted(database.get_all_processes())
+            self.trend_app_combo['values'] = all_processes
+            if all_processes and not self.trend_app_var.get():
+                self.trend_app_combo.set(all_processes[0])
+                self._load_app_trend()
+
+        except Exception as e:
+            logging.error(f"Trend verileri güncellenirken hata: {e}")
+
+    def _load_app_trend(self, event=None):
+        """Seçili uygulamanın trend grafiğini yükler."""
+        if self.trend_chart_canvas:
+            self.trend_chart_canvas.get_tk_widget().destroy()
+            self.trend_chart_canvas = None
+
+        selected_app = self.trend_app_var.get()
+        if not selected_app:
+            return
+
+        try:
+            # Son 30 günlük veriyi al
+            trend_data = analyzer.get_app_usage_over_time(selected_app, num_days=30)
+            
+            if not trend_data:
+                no_data_label = ttk.Label(self.trend_chart_frame,
+                                         text=f"'{selected_app}' için trend verisi bulunmuyor.",
+                                         font=STYLE_CONFIG["font_normal"])
+                no_data_label.pack(expand=True)
+                return
+
+            # Tarihleri ve süreleri hazırla
+            dates = []
+            durations = []
+            
+            # Son 30 günü oluştur
+            today = datetime.datetime.now()
+            for i in range(29, -1, -1):
+                date = today - datetime.timedelta(days=i)
+                date_str = date.strftime('%Y-%m-%d')
+                dates.append(date_str)
+                durations.append(trend_data.get(date_str, 0) / 60)  # Dakikaya çevir
+
+            fig = Figure(figsize=(12, 6), dpi=100, facecolor=STYLE_CONFIG["bg_card"])
+            ax = fig.add_subplot(111)
+            ax.set_facecolor(STYLE_CONFIG["bg_card"])
+
+            # Trend çizgisi
+            ax.plot(range(len(dates)), durations, color=STYLE_CONFIG["accent_color"], 
+                   linewidth=2, marker='o', markersize=3)
+            ax.fill_between(range(len(dates)), durations, alpha=0.3, color=STYLE_CONFIG["accent_color"])
+
+            ax.set_xlabel('Tarih', fontsize=12, color=STYLE_CONFIG["text_primary"])
+            ax.set_ylabel('Kullanım Süresi (Dakika)', fontsize=12, color=STYLE_CONFIG["text_primary"])
+            ax.set_title(f"'{selected_app}' - 30 Günlük Kullanım Trendi", fontsize=14, fontweight='bold',
+                        color=STYLE_CONFIG["text_primary"], pad=20)
+
+            # X ekseni etiketleri (her 5 günde bir)
+            ax.set_xticks(range(0, len(dates), 5))
+            ax.set_xticklabels([dates[i].split('-')[1] + '/' + dates[i].split('-')[2] for i in range(0, len(dates), 5)])
+
+            ax.grid(True, alpha=0.3)
+            ax.set_axisbelow(True)
+
+            # Renkleri ayarla
+            ax.tick_params(colors=STYLE_CONFIG["text_primary"])
+            ax.spines['bottom'].set_color(STYLE_CONFIG["border_color"])
+            ax.spines['left'].set_color(STYLE_CONFIG["border_color"])
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+
+            fig.tight_layout()
+
+            self.trend_chart_canvas = FigureCanvasTkAgg(fig, master=self.trend_chart_frame)
+            self.trend_chart_canvas.draw()
+            self.trend_chart_canvas.get_tk_widget().pack(fill='both', expand=True)
+
+        except Exception as e:
+            logging.error(f"Trend grafiği çizilirken hata: {e}")
+
+    def _update_suggestions(self, category_totals, total_duration):
+        """Öneriler sekmesini günceller."""
+        try:
+            self.suggestions_text.config(state=tk.NORMAL)
+            self.suggestions_text.delete(1.0, tk.END)
+
+            suggestions = analyzer.get_user_suggestions(category_totals, total_duration)
+            
+            if suggestions:
+                for i, suggestion in enumerate(suggestions, 1):
+                    self.suggestions_text.insert(tk.END, f"{i}. {suggestion}\n\n")
+            else:
+                self.suggestions_text.insert(tk.END, "Henüz yeterli veri toplanmadığı için öneri oluşturulamıyor. Lütfen birkaç gün daha kullanım verisi biriktirin.")
+
+            self.suggestions_text.config(state=tk.DISABLED)
+
+        except Exception as e:
+            logging.error(f"Öneriler güncellenirken hata: {e}")
+
+    def _export_data(self):
+        """Verileri CSV olarak dışa aktar."""
+        try:
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".csv",
+                filetypes=[("CSV dosyaları", "*.csv"), ("Tüm dosyalar", "*.*")],
+                title="Verileri CSV Olarak Kaydet"
+            )
+            
+            if file_path:
+                success, error = database.export_all_data_to_csv(file_path)
+                if success:
+                    messagebox.showinfo("Başarılı", f"Veriler '{file_path}' dosyasına kaydedildi.", parent=self)
+                else:
+                    messagebox.showerror("Hata", f"Dışa aktarma hatası: {error}", parent=self)
+                    
+        except Exception as e:
+            logging.error(f"CSV dışa aktarma hatası: {e}")
+            messagebox.showerror("Hata", f"Dışa aktarma sırasında hata oluştu: {e}", parent=self)
+
+    def _export_pdf_report(self):
+        """PDF rapor oluştur."""
+        try:
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".pdf",
+                filetypes=[("PDF dosyaları", "*.pdf"), ("Tüm dosyalar", "*.*")],
+                title="PDF Rapor Kaydet"
+            )
+            
+            if file_path:
+                start_date, end_date = self._get_date_range(self.current_report_range)
+                success, error = reporter.create_pdf_report(file_path, start_date, end_date)
+                
+                if success:
+                    messagebox.showinfo("Başarılı", f"PDF raporu '{file_path}' dosyasına kaydedildi.", parent=self)
+                else:
+                    messagebox.showerror("Hata", f"PDF oluşturma hatası: {error}", parent=self)
+                    
+        except Exception as e:
+            logging.error(f"PDF dışa aktarma hatası: {e}")
+            messagebox.showerror("Hata", f"PDF oluşturma sırasında hata oluştu: {e}", parent=self)
+
+class GoalsWindow(BaseWindow):
+    """Hedef yönetimi penceresi."""
+    
+    def __init__(self, master=None):
+        super().__init__(master, "Hedef Yönetimi", "750x600")
+        self._create_goals_interface()
+        self._load_goals()
+        
+        self.add_action_buttons([
+            {'text': 'Kapat', 'command': self.destroy, 'style': 'TButton'}
+        ])
+
+    def _create_goals_interface(self):
+        """Hedef yönetimi arayüzü."""
+        # Yeni hedef ekleme paneli
+        add_panel = ttk.LabelFrame(self.content_frame, text="Yeni Hedef Oluştur", 
+                                  style='TLabelframe')
+        add_panel.pack(fill='x', pady=(0, 20))
+        
+        add_content = ttk.Frame(add_panel, style='TFrame')
+        add_content.pack(fill='x', padx=15, pady=15)
+        
+        # Grid düzeni
+        add_content.grid_columnconfigure(1, weight=1)
+        
+        # Hedef tipi
+        ttk.Label(add_content, text="Hedef Tipi:", 
+                 font=STYLE_CONFIG["font_bold"]).grid(row=0, column=0, sticky='w', padx=(0, 10), pady=5)
+        
+        self.goal_type_var = StringVar(value="max_usage")
+        goal_types = [
+            ("Maksimum Kullanım", "max_usage"),
+            ("Minimum Kullanım", "min_usage"), 
+            ("Uygulama Engelleme", "block"),
+            ("Zaman Aralığı Limiti", "time_window_max")
+        ]
+        
+        self.goal_type_combo = ttk.Combobox(add_content, textvariable=self.goal_type_var,
+                                           values=[gt[0] for gt in goal_types],
+                                           state="readonly")
+        self.goal_type_combo.grid(row=0, column=1, sticky='ew', pady=5)
+        self.goal_type_combo.bind("<<ComboboxSelected>>", self._on_goal_type_change)
+        
+        self.goal_type_mapping = dict(goal_types)
+        
+        # Dinamik alanlar için frame
+        self.dynamic_frame = ttk.Frame(add_content, style='TFrame')
+        self.dynamic_frame.grid(row=1, column=0, columnspan=2, sticky='ew', pady=10)
+        self.dynamic_frame.grid_columnconfigure(1, weight=1)
+        
+        # Ekle butonu
+        ttk.Button(add_content, text="Hedef Ekle", command=self._add_goal,
+                  style='Accent.TButton').grid(row=2, column=0, columnspan=2, pady=15)
+        
+        # İlk yükleme
+        self._create_dynamic_fields()
+        
+        # Mevcut hedefler listesi
+        goals_panel = ttk.LabelFrame(self.content_frame, text="Mevcut Hedefler",
+                                    style='TLabelframe')
+        goals_panel.pack(fill='both', expand=True)
+        
+        goals_content = ttk.Frame(goals_panel, style='TFrame')
+        goals_content.pack(fill='both', expand=True, padx=15, pady=15)
+        
+        # Hedefler tablosu
+        self.goals_tree = ttk.Treeview(goals_content, 
+                                      columns=("type", "target", "limit", "time_window", "status"),
+                                      show="headings", height=10)
+        
+        self.goals_tree.heading("type", text="Tip")
+        self.goals_tree.heading("target", text="Hedef")
+        self.goals_tree.heading("limit", text="Limit")
+        self.goals_tree.heading("time_window", text="Zaman Aralığı")
+        self.goals_tree.heading("status", text="Durum")
+        
+        self.goals_tree.column("type", width=120)
+        self.goals_tree.column("target", width=150)
+        self.goals_tree.column("limit", width=100)
+        self.goals_tree.column("time_window", width=120)
+        self.goals_tree.column("status", width=80)
+        
+        # Scrollbar
+        goals_scroll = ttk.Scrollbar(goals_content, orient="vertical",
+                                    command=self.goals_tree.yview)
+        self.goals_tree.configure(yscrollcommand=goals_scroll.set)
+        
+        self.goals_tree.pack(side='left', fill='both', expand=True)
+        goals_scroll.pack(side='right', fill='y')
+        
+        # Sil butonu
+        delete_frame = ttk.Frame(goals_content, style='TFrame')
+        delete_frame.pack(fill='x', pady=(10, 0))
+        
+        ttk.Button(delete_frame, text="Seçili Hedefi Sil", command=self._delete_goal,
+                  style='Danger.TButton').pack(side='right')
+
+    def _create_dynamic_fields(self):
+        """Hedef tipine göre dinamik alanlar oluşturur."""
+        # Mevcut widget'ları temizle
+        for widget in self.dynamic_frame.winfo_children():
+            widget.destroy()
+            
+        goal_type = self.goal_type_var.get()
+        selected_type = self.goal_type_mapping.get(goal_type, "max_usage")
+        
+        if selected_type in ['min_usage', 'max_usage']:
+            # Kategori seçimi
+            ttk.Label(self.dynamic_frame, text="Kategori:",
+                     font=STYLE_CONFIG["font_bold"]).grid(row=0, column=0, sticky='w', padx=(0, 10), pady=5)
+            
+            self.category_var = StringVar()
+            self.category_combo = ttk.Combobox(self.dynamic_frame, textvariable=self.category_var,
+                                              state="readonly")
+            self.category_combo.grid(row=0, column=1, sticky='ew', pady=5)
+            
+            # Kategorileri yükle
+            categories = database.get_all_categories()
+            self.category_combo['values'] = categories
+            if categories:
+                self.category_combo.set(categories[0])
+            
+            # Süre limiti
+            ttk.Label(self.dynamic_frame, text="Süre Limiti (dakika):",
+                     font=STYLE_CONFIG["font_bold"]).grid(row=1, column=0, sticky='w', padx=(0, 10), pady=5)
+            
+            self.time_limit_var = StringVar()
+            self.time_limit_entry = ttk.Entry(self.dynamic_frame, textvariable=self.time_limit_var)
+            self.time_limit_entry.grid(row=1, column=1, sticky='ew', pady=5)
+            
+        elif selected_type == 'block':
+            # Uygulama seçimi
+            ttk.Label(self.dynamic_frame, text="Engellenecek Uygulama:",
+                     font=STYLE_CONFIG["font_bold"]).grid(row=0, column=0, sticky='w', padx=(0, 10), pady=5)
+            
+            self.process_var = StringVar()
+            self.process_combo = ttk.Combobox(self.dynamic_frame, textvariable=self.process_var)
+            self.process_combo.grid(row=0, column=1, sticky='ew', pady=5)
+            
+            # Uygulamaları yükle
+            processes = database.get_all_processes()
+            self.process_combo['values'] = processes
+            if processes:
+                self.process_combo.set(processes[0])
+                
+        elif selected_type == 'time_window_max':
+            # Kategori seçimi
+            ttk.Label(self.dynamic_frame, text="Kategori:",
+                     font=STYLE_CONFIG["font_bold"]).grid(row=0, column=0, sticky='w', padx=(0, 10), pady=5)
+            
+            self.category_var = StringVar()
+            self.category_combo = ttk.Combobox(self.dynamic_frame, textvariable=self.category_var,
+                                              state="readonly")
+            self.category_combo.grid(row=0, column=1, sticky='ew', pady=5)
+            
+            categories = database.get_all_categories()
+            self.category_combo['values'] = categories
+            if categories:
+                self.category_combo.set(categories[0])
+            
+            # Zaman aralığı
+            ttk.Label(self.dynamic_frame, text="Zaman Aralığı:",
+                     font=STYLE_CONFIG["font_bold"]).grid(row=1, column=0, sticky='w', padx=(0, 10), pady=5)
+            
+            time_frame = ttk.Frame(self.dynamic_frame, style='TFrame')
+            time_frame.grid(row=1, column=1, sticky='ew', pady=5)
+            
+            self.start_hour_var = StringVar(value="09")
+            self.start_min_var = StringVar(value="00")
+            self.end_hour_var = StringVar(value="17")
+            self.end_min_var = StringVar(value="00")
+            
+            ttk.Spinbox(time_frame, from_=0, to=23, textvariable=self.start_hour_var,
+                       width=3, format="%02.0f").pack(side='left', padx=2)
+            ttk.Label(time_frame, text=":").pack(side='left')
+            ttk.Spinbox(time_frame, from_=0, to=59, textvariable=self.start_min_var,
+                       width=3, format="%02.0f").pack(side='left', padx=2)
+            ttk.Label(time_frame, text=" - ").pack(side='left', padx=5)
+            ttk.Spinbox(time_frame, from_=0, to=23, textvariable=self.end_hour_var,
+                       width=3, format="%02.0f").pack(side='left', padx=2)
+            ttk.Label(time_frame, text=":").pack(side='left')
+            ttk.Spinbox(time_frame, from_=0, to=59, textvariable=self.end_min_var,
+                       width=3, format="%02.0f").pack(side='left', padx=2)
+            
+            # Süre limiti
+            ttk.Label(self.dynamic_frame, text="Maksimum Süre (dakika):",
+                     font=STYLE_CONFIG["font_bold"]).grid(row=2, column=0, sticky='w', padx=(0, 10), pady=5)
+            
+            self.time_limit_var = StringVar()
+            self.time_limit_entry = ttk.Entry(self.dynamic_frame, textvariable=self.time_limit_var)
+            self.time_limit_entry.grid(row=2, column=1, sticky='ew', pady=5)
+
+    def _on_goal_type_change(self, event=None):
+        """Hedef tipi değiştiğinde dinamik alanları günceller."""
+        self._create_dynamic_fields()
+
+    def _add_goal(self):
+        """Yeni hedef ekler."""
+        try:
+            goal_type_display = self.goal_type_var.get()
+            goal_type = self.goal_type_mapping.get(goal_type_display, "max_usage")
+            
+            category = None
+            process_name = None
+            time_limit = None
+            start_time = None
+            end_time = None
+            
+            if goal_type in ['min_usage', 'max_usage']:
+                category = self.category_var.get()
+                time_limit_str = self.time_limit_var.get()
+                
+                if not category or not time_limit_str:
+                    raise ValueError("Kategori ve süre limiti gereklidir.")
+                    
+                time_limit = int(time_limit_str)
+                if time_limit <= 0:
+                    raise ValueError("Süre limiti pozitif bir sayı olmalıdır.")
+                    
+            elif goal_type == 'block':
+                process_name = self.process_var.get()
+                if not process_name:
+                    raise ValueError("Engellenecek uygulama seçilmelidir.")
+                    
+            elif goal_type == 'time_window_max':
+                category = self.category_var.get()
+                time_limit_str = self.time_limit_var.get()
+                
+                if not category or not time_limit_str:
+                    raise ValueError("Kategori ve süre limiti gereklidir.")
+                    
+                time_limit = int(time_limit_str)
+                if time_limit <= 0:
+                    raise ValueError("Süre limiti pozitif bir sayı olmalıdır.")
+                
+                start_time = f"{int(self.start_hour_var.get()):02d}:{int(self.start_min_var.get()):02d}"
+                end_time = f"{int(self.end_hour_var.get()):02d}:{int(self.end_min_var.get()):02d}"
+                
+                # Zaman kontrolü
+                start_dt = datetime.datetime.strptime(start_time, '%H:%M').time()
+                end_dt = datetime.datetime.strptime(end_time, '%H:%M').time()
+                if start_dt >= end_dt:
+                    raise ValueError("Başlangıç zamanı bitiş zamanından önce olmalıdır.")
+            
+            # Hedefi veritabanına ekle
+            database.add_goal(category, process_name, goal_type, time_limit, start_time, end_time)
+            
+            messagebox.showinfo("Başarılı", "Hedef başarıyla eklendi.", parent=self)
+            self._load_goals()
+            self._clear_form()
+            
+        except ValueError as e:
+            messagebox.showwarning("Geçersiz Giriş", str(e), parent=self)
+        except Exception as e:
+            logging.error(f"Hedef eklenirken hata: {e}")
+            messagebox.showerror("Hata", f"Hedef eklenirken hata oluştu: {e}", parent=self)
+
+    def _clear_form(self):
+        """Formu temizler."""
+        try:
+            if hasattr(self, 'time_limit_var'):
+                self.time_limit_var.set("")
+        except:
+            pass
+
+    def _load_goals(self):
+        """Mevcut hedefleri yükler."""
+        try:
+            # Mevcut öğeleri temizle
+            for item in self.goals_tree.get_children():
+                self.goals_tree.delete(item)
+            
+            goals = database.get_goals()
+            for goal in goals:
+                # Tip çevirisi
+                type_display = {
+                    'max_usage': 'Maks. Kullanım',
+                    'min_usage': 'Min. Kullanım',
+                    'block': 'Engelleme',
+                    'time_window_max': 'Zaman Aralığı'
+                }.get(goal['goal_type'], goal['goal_type'])
+                
+                # Hedef (kategori veya uygulama)
+                target = goal['category'] or goal['process_name'] or "N/A"
+                
+                # Limit
+                limit = f"{goal['time_limit_minutes']} dk" if goal['time_limit_minutes'] else "N/A"
+                
+                # Zaman aralığı
+                time_window = "Tüm Gün"
+                if goal['start_time_of_day'] and goal['end_time_of_day']:
+                    time_window = f"{goal['start_time_of_day']}-{goal['end_time_of_day']}"
+                
+                # Durum (basit kontrol)
+                status = "Aktif"  # Bu kısım geliştirilebilir
+                
+                self.goals_tree.insert("", "end", iid=goal['id'],
+                                      values=(type_display, target, limit, time_window, status))
+                                      
+        except Exception as e:
+            logging.error(f"Hedefler yüklenirken hata: {e}")
+
+    def _delete_goal(self):
+        """Seçili hedefi siler."""
+        selected_item = self.goals_tree.selection()
+        if not selected_item:
+            messagebox.showwarning("Seçim Gerekli", "Lütfen silmek istediğiniz hedefi seçin.", parent=self)
+            return
+        
+        goal_id = selected_item[0]
+        
+        if messagebox.askyesno("Hedef Sil", "Bu hedefi silmek istediğinizden emin misiniz?", parent=self):
+            try:
+                database.delete_goal(goal_id)
+                messagebox.showinfo("Başarılı", "Hedef başarıyla silindi.", parent=self)
+                self._load_goals()
+            except Exception as e:
+                logging.error(f"Hedef silinirken hata: {e}")
+                messagebox.showerror("Hata", f"Hedef silinirken hata oluştu: {e}", parent=self)
+
+class SettingsWindow(BaseWindow):
+    """Ayarlar penceresi."""
+    
+    def __init__(self, master=None, app_instance=None):
+        super().__init__(master, "Ayarlar", "600x650")
+        self.app_instance = app_instance
+        self.config_manager = app_instance.config_manager if app_instance else None
+        
+        self._create_settings_interface()
+        self._load_settings()
+        
+        self.add_action_buttons([
+            {'text': 'Kaydet', 'command': self._save_settings, 'style': 'Accent.TButton'},
+            {'text': 'İptal', 'command': self.destroy, 'style': 'TButton'}
+        ])
+
+    def _create_settings_interface(self):
+        """Ayarlar arayüzü."""
+        # Ayarlar notebook
+        settings_notebook = ttk.Notebook(self.content_frame)
+        settings_notebook.pack(fill='both', expand=True)
+        
+        # Genel Ayarlar
+        general_frame = ttk.Frame(settings_notebook, style='TFrame')
+        settings_notebook.add(general_frame, text="⚙️ Genel")
+        self._create_general_settings(general_frame)
+        
+        # Bildirim Ayarları
+        notifications_frame = ttk.Frame(settings_notebook, style='TFrame')
+        settings_notebook.add(notifications_frame, text="🔔 Bildirimler")
+        self._create_notification_settings(notifications_frame)
+        
+        # Gelişmiş Ayarlar
+        advanced_frame = ttk.Frame(settings_notebook, style='TFrame')
+        settings_notebook.add(advanced_frame, text="🔧 Gelişmiş")
+        self._create_advanced_settings(advanced_frame)
+
+    def _create_general_settings(self, parent):
+        """Genel ayarlar sekmesi."""
+        content = ttk.Frame(parent, style='TFrame')
+        content.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Başlık
+        title_label = ttk.Label(content, text="Genel Ayarlar",
+                               font=STYLE_CONFIG["font_h2"])
+        title_label.pack(anchor='w', pady=(0, 20))
+        
+        # Ayarlar grid
+        settings_grid = ttk.Frame(content, style='TFrame')
+        settings_grid.pack(fill='x')
+        settings_grid.grid_columnconfigure(1, weight=1)
+        
+        row = 0
+        
+        # Boşta kalma eşiği
+        ttk.Label(settings_grid, text="Boşta Kalma Eşiği (saniye):",
+                 font=STYLE_CONFIG["font_bold"]).grid(row=row, column=0, sticky='w', padx=(0, 15), pady=8)
+        
+        self.idle_threshold_var = tk.IntVar()
+        self.idle_threshold_spin = ttk.Spinbox(settings_grid, from_=30, to=600, increment=30,
+                                              textvariable=self.idle_threshold_var, width=10)
+        self.idle_threshold_spin.grid(row=row, column=1, sticky='w', pady=8)
+        row += 1
+        
+        # Uygulama dili
+        ttk.Label(settings_grid, text="Uygulama Dili:",
+                 font=STYLE_CONFIG["font_bold"]).grid(row=row, column=0, sticky='w', padx=(0, 15), pady=8)
+        
+        self.language_var = StringVar()
+        self.language_combo = ttk.Combobox(settings_grid, textvariable=self.language_var,
+                                          values=["Türkçe", "English"], state="readonly", width=15)
+        self.language_combo.grid(row=row, column=1, sticky='w', pady=8)
+        row += 1
+        
+        # Başlangıçta çalıştır
+        self.startup_var = tk.BooleanVar()
+        startup_check = ttk.Checkbutton(settings_grid, text="Windows başlangıcında çalıştır",
+                                       variable=self.startup_var)
+        startup_check.grid(row=row, column=0, columnspan=2, sticky='w', pady=8)
+        row += 1
+        
+        # Veri saklama süresi
+        ttk.Label(settings_grid, text="Veri Saklama Süresi (gün):",
+                 font=STYLE_CONFIG["font_bold"]).grid(row=row, column=0, sticky='w', padx=(0, 15), pady=8)
+        
+        self.retention_var = tk.IntVar()
+        self.retention_spin = ttk.Spinbox(settings_grid, from_=0, to=9999, increment=30,
+                                         textvariable=self.retention_var, width=10)
+        self.retention_spin.grid(row=row, column=1, sticky='w', pady=8)
+        
+        # Açıklama
+        ttk.Label(settings_grid, text="(0 = Sonsuz saklama)",
+                 font=STYLE_CONFIG["font_small"],
+                 foreground=STYLE_CONFIG["text_secondary"]).grid(row=row+1, column=1, sticky='w', pady=2)
+
+    def _create_notification_settings(self, parent):
+        """Bildirim ayarları sekmesi."""
+        content = ttk.Frame(parent, style='TFrame')
+        content.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Başlık
+        title_label = ttk.Label(content, text="Bildirim Ayarları",
+                               font=STYLE_CONFIG["font_h2"])
+        title_label.pack(anchor='w', pady=(0, 20))
+        
+        # Bildirim türleri
+        notifications_frame = ttk.LabelFrame(content, text="Bildirim Türleri",
+                                            style='TLabelframe')
+        notifications_frame.pack(fill='x', pady=(0, 15))
+        
+        notif_content = ttk.Frame(notifications_frame, style='TFrame')
+        notif_content.pack(fill='x', padx=15, pady=15)
+        
+        self.goal_notifications_var = tk.BooleanVar()
+        ttk.Checkbutton(notif_content, text="Hedef bildirimlerini göster",
+                       variable=self.goal_notifications_var).pack(anchor='w', pady=3)
+        
+        self.focus_notifications_var = tk.BooleanVar()
+        ttk.Checkbutton(notif_content, text="Odaklanma modu bildirimlerini göster",
+                       variable=self.focus_notifications_var).pack(anchor='w', pady=3)
+        
+        self.achievement_notifications_var = tk.BooleanVar()
+        ttk.Checkbutton(notif_content, text="Başarım bildirimlerini göster",
+                       variable=self.achievement_notifications_var).pack(anchor='w', pady=3)
+        
+        # Bildirim sıklığı
+        freq_frame = ttk.LabelFrame(content, text="Bildirim Sıklığı",
+                                   style='TLabelframe')
+        freq_frame.pack(fill='x')
+        
+        freq_content = ttk.Frame(freq_frame, style='TFrame')
+        freq_content.pack(fill='x', padx=15, pady=15)
+        freq_content.grid_columnconfigure(1, weight=1)
+        
+        ttk.Label(freq_content, text="Odaklanma bildirimi sıklığı (saniye):",
+                 font=STYLE_CONFIG["font_bold"]).grid(row=0, column=0, sticky='w', padx=(0, 15), pady=5)
+        
+        self.focus_freq_var = tk.IntVar()
+        ttk.Spinbox(freq_content, from_=60, to=1800, increment=60,
+                   textvariable=self.focus_freq_var, width=10).grid(row=0, column=1, sticky='w', pady=5)
+
+    def _create_advanced_settings(self, parent):
+        """Gelişmiş ayarlar sekmesi."""
+        content = ttk.Frame(parent, style='TFrame')
+        content.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Başlık
+        title_label = ttk.Label(content, text="Gelişmiş Ayarlar",
+                               font=STYLE_CONFIG["font_h2"])
+        title_label.pack(anchor='w', pady=(0, 20))
+        
+        # Hata raporlama
+        error_frame = ttk.LabelFrame(content, text="Hata Raporlama",
+                                    style='TLabelframe')
+        error_frame.pack(fill='x', pady=(0, 15))
+        
+        error_content = ttk.Frame(error_frame, style='TFrame')
+        error_content.pack(fill='x', padx=15, pady=15)
+        
+        self.sentry_var = tk.BooleanVar()
+        ttk.Checkbutton(error_content, text="Anonim hata raporlamasını etkinleştir (Sentry)",
+                       variable=self.sentry_var).pack(anchor='w', pady=3)
+        
+        # Açıklama
+        desc_text = ("Bu seçenek etkinleştirildiğinde, uygulama hataları anonim olarak "
+                    "geliştiricilere gönderilir. Kişisel verileriniz paylaşılmaz.")
+        ttk.Label(error_content, text=desc_text, font=STYLE_CONFIG["font_small"],
+                 foreground=STYLE_CONFIG["text_secondary"],
+                 wraplength=400).pack(anchor='w', pady=(5, 0))
+        
+        # Güncellemeler
+        update_frame = ttk.LabelFrame(content, text="Güncellemeler",
+                                     style='TLabelframe')
+        update_frame.pack(fill='x')
+        
+        update_content = ttk.Frame(update_frame, style='TFrame')
+        update_content.pack(fill='x', padx=15, pady=15)
+        
+        ttk.Button(update_content, text="Güncellemeleri Kontrol Et",
+                  command=self._check_updates).pack(anchor='w')
+
+    def _load_settings(self):
+        """Mevcut ayarları yükler."""
+        if not self.config_manager:
+            return
+        
+        try:
+            # Genel ayarlar
+            self.idle_threshold_var.set(self.config_manager.get('settings.idle_threshold_seconds', 180))
+            
+            language = self.config_manager.get('settings.language', 'tr')
+            language_display = "Türkçe" if language == 'tr' else "English"
+            self.language_var.set(language_display)
+            
+            self.startup_var.set(self.config_manager.get('settings.run_on_startup', False))
+            self.retention_var.set(self.config_manager.get('settings.data_retention_days', 365))
+            
+            # Bildirim ayarları
+            notif_settings = self.config_manager.get('settings.notification_settings', {})
+            self.goal_notifications_var.set(notif_settings.get('enable_goal_notifications', True))
+            self.focus_notifications_var.set(notif_settings.get('enable_focus_notifications', True))
+            self.achievement_notifications_var.set(notif_settings.get('show_achievement_notifications', True))
+            self.focus_freq_var.set(notif_settings.get('focus_notification_frequency_seconds', 300))
+            
+            # Gelişmiş ayarlar
+            self.sentry_var.set(self.config_manager.get('settings.enable_sentry_reporting', True))
+            
+        except Exception as e:
+            logging.error(f"Ayarlar yüklenirken hata: {e}")
+
+    def _save_settings(self):
+        """Ayarları kaydeder."""
+        if not self.config_manager:
+            messagebox.showerror("Hata", "Yapılandırma yöneticisi bulunamadı.", parent=self)
+            return
+        
+        try:
+            # Genel ayarlar
+            idle_threshold = self.idle_threshold_var.get()
+            if idle_threshold <= 0:
+                raise ValueError("Boşta kalma eşiği pozitif bir sayı olmalıdır.")
+            self.config_manager.set('settings.idle_threshold_seconds', idle_threshold)
+            
+            language_display = self.language_var.get()
+            language_code = 'tr' if language_display == 'Türkçe' else 'en'
+            self.config_manager.set('settings.language', language_code)
+            
+            self.config_manager.set('settings.run_on_startup', self.startup_var.get())
+            
+            retention_days = self.retention_var.get()
+            if retention_days < 0:
+                raise ValueError("Veri saklama süresi negatif olamaz.")
+            self.config_manager.set('settings.data_retention_days', retention_days)
+            
+            # Bildirim ayarları
+            notif_settings = {
+                'enable_goal_notifications': self.goal_notifications_var.get(),
+                'enable_focus_notifications': self.focus_notifications_var.get(),
+                'show_achievement_notifications': self.achievement_notifications_var.get(),
+                'focus_notification_frequency_seconds': self.focus_freq_var.get()
+            }
+            
+            if notif_settings['focus_notification_frequency_seconds'] <= 0:
+                raise ValueError("Bildirim sıklığı pozitif bir sayı olmalıdır.")
+                
+            self.config_manager.set('settings.notification_settings', notif_settings)
+            
+            # Gelişmiş ayarlar
+            self.config_manager.set('settings.enable_sentry_reporting', self.sentry_var.get())
+            
+            # App instance güncelle
+            if self.app_instance:
+                self.app_instance._set_run_on_startup(self.startup_var.get())
+                if hasattr(self.app_instance, 'tracker_instance'):
+                    self.app_instance.tracker_instance.update_settings(self.config_manager.get('settings'))
+            
+            messagebox.showinfo("Başarılı", "Ayarlar başarıyla kaydedildi.", parent=self)
+            self.destroy()
+            
+        except ValueError as e:
+            messagebox.showwarning("Geçersiz Giriş", str(e), parent=self)
+        except Exception as e:
+            logging.error(f"Ayarlar kaydedilirken hata: {e}")
+            messagebox.showerror("Hata", f"Ayarlar kaydedilirken hata oluştu: {e}", parent=self)
+
+    def _check_updates(self):
+        """Güncellemeleri kontrol eder."""
+        messagebox.showinfo("Güncelleme Kontrolü", 
+                           "Güncellemeler kontrol ediliyor...\n\n"
+                           "Bu özellik gelecek sürümlerde aktif hale gelecektir.", 
+                           parent=self)
+
+class FocusSetupWindow(BaseWindow):
+    """Odaklanma oturumu kurulum penceresi."""
+    
+    def __init__(self, master, on_start_callback):
+        super().__init__(master, "Odaklanma Oturumu Ayarla", "450x550")
+        self.on_start_callback = on_start_callback
+        
+        self._create_focus_interface()
+        
+        self.add_action_buttons([
+            {'text': 'Başlat', 'command': self._start_session, 'style': 'Accent.TButton'},
+            {'text': 'İptal', 'command': self.destroy, 'style': 'TButton'}
+        ])
+
+    def _create_focus_interface(self):
+        """Odaklanma arayüzü."""
+        # Başlık
+        title_label = ttk.Label(self.content_frame, 
+                               text="Odaklanma Oturumu",
+                               font=STYLE_CONFIG["font_h2"])
+        title_label.pack(pady=(0, 20))
+        
+        # Oturum süresi
+        duration_frame = ttk.LabelFrame(self.content_frame, text="Oturum Süresi",
+                                       style='TLabelframe')
+        duration_frame.pack(fill='x', pady=(0, 20))
+        
+        duration_content = ttk.Frame(duration_frame, style='TFrame')
+        duration_content.pack(fill='x', padx=15, pady=15)
+        
+        self.duration_var = tk.IntVar(value=60)
+        
+        # Hazır süre seçenekleri
+        duration_options = [
+            ("25 dakika (Pomodoro)", 25),
+            ("45 dakika", 45),
+            ("60 dakika", 60),
+            ("90 dakika", 90),
+            ("120 dakika", 120)
+        ]
+        
+        for text, value in duration_options:
+            rb = ttk.Radiobutton(duration_content, text=text, 
+                                variable=self.duration_var, value=value)
+            rb.pack(anchor='w', pady=3)
+        
+        # Özel süre
+        custom_frame = ttk.Frame(duration_content, style='TFrame')
+        custom_frame.pack(fill='x', pady=(10, 0))
+        
+        ttk.Radiobutton(custom_frame, text="Özel süre:", 
+                       variable=self.duration_var, value=0).pack(side='left')
+        
+        self.custom_duration_var = tk.IntVar(value=30)
+        custom_spin = ttk.Spinbox(custom_frame, from_=10, to=240, increment=5,
+                                 textvariable=self.custom_duration_var, width=8)
+        custom_spin.pack(side='left', padx=(10, 5))
+        ttk.Label(custom_frame, text="dakika").pack(side='left')
+        
+        # İzin verilen kategoriler
+        categories_frame = ttk.LabelFrame(self.content_frame, text="İzin Verilen Kategoriler",
+                                         style='TLabelframe')
+        categories_frame.pack(fill='both', expand=True)
+        
+        categories_content = ttk.Frame(categories_frame, style='TFrame')
+        categories_content.pack(fill='both', expand=True, padx=15, pady=15)
+        
+        # Scrollable frame
+        canvas = tk.Canvas(categories_content, bg=STYLE_CONFIG["bg_card"], 
+                          highlightthickness=0, height=200)
+        scrollbar = ttk.Scrollbar(categories_content, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas, style='TFrame')
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Kategorileri yükle
+        categories = database.get_all_categories()
+        if "Other" not in categories:
+            categories.append("Other")
+        
+        self.category_vars = {}
+        for i, category in enumerate(sorted(categories)):
+            var = tk.BooleanVar(value=True)
+            cb = ttk.Checkbutton(scrollable_frame, text=category, variable=var)
+            cb.grid(row=i, column=0, sticky='w', padx=5, pady=2)
+            self.category_vars[category] = var
+        
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Hızlı seçim butonları
+        quick_frame = ttk.Frame(categories_content, style='TFrame')
+        quick_frame.pack(fill='x', pady=(10, 0))
+        
+        ttk.Button(quick_frame, text="Tümünü Seç", 
+                  command=self._select_all_categories).pack(side='left', padx=5)
+        ttk.Button(quick_frame, text="Hiçbirini Seçme", 
+                  command=self._deselect_all_categories).pack(side='left', padx=5)
+        ttk.Button(quick_frame, text="Sadece Verimli", 
+                  command=self._select_productivity_categories).pack(side='left', padx=5)
+
+    def _select_all_categories(self):
+        """Tüm kategorileri seçer."""
+        for var in self.category_vars.values():
+            var.set(True)
+
+    def _deselect_all_categories(self):
+        """Tüm kategori seçimlerini kaldırır."""
+        for var in self.category_vars.values():
+            var.set(False)
+
+    def _select_productivity_categories(self):
+        """Sadece verimlilik kategorilerini seçer."""
+        productivity_categories = ['Work', 'Development', 'Design', 'Education', 'Writing']
+        
+        for category, var in self.category_vars.items():
+            if any(prod_cat.lower() in category.lower() for prod_cat in productivity_categories):
+                var.set(True)
+            else:
+                var.set(False)
+
+    def _start_session(self):
+        """Odaklanma oturumunu başlatır."""
+        try:
+            # Süreyi belirle
+            if self.duration_var.get() == 0:
+                duration = self.custom_duration_var.get()
+            else:
+                duration = self.duration_var.get()
+            
+            if duration <= 0:
+                raise ValueError("Oturum süresi pozitif bir sayı olmalıdır.")
+            
+            # İzin verilen kategorileri topla
+            allowed_categories = [cat for cat, var in self.category_vars.items() if var.get()]
+            
+            if not allowed_categories:
+                raise ValueError("En az bir kategori seçilmelidir.")
+            
+            # Callback'i çağır
+            self.on_start_callback(duration, allowed_categories)
+            self.destroy()
+            
+        except ValueError as e:
+            messagebox.showwarning("Geçersiz Ayar", str(e), parent=self)
+        except Exception as e:
+            logging.error(f"Odaklanma oturumu başlatılırken hata: {e}")
+            messagebox.showerror("Hata", f"Oturum başlatılırken hata oluştu: {e}", parent=self)
