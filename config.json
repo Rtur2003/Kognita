@@ -1,8 +1,18 @@
 {
     "settings": {
-        "idle_threshold_seconds": 180
+        "idle_threshold_seconds": 180,
+        "language": "tr",
+        "notification_settings": {
+            "enable_goal_notifications": true,
+            "enable_focus_notifications": true,
+            "focus_notification_frequency_seconds": 300,
+            "show_achievement_notifications": true
+        },
+        "run_on_startup": false,
+        "enable_sentry_reporting": true,
+        "data_retention_days": 365
     },
     "app_state": {
-        "first_run": false
+        "first_run": true
     }
 }

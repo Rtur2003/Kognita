@@ -1,4 +1,4 @@
-# kognita/database.py
+# kognita/database.py (Güncellenmiş Hali)
 import sqlite3
 import os
 import logging
@@ -13,7 +13,7 @@ import json
 
 # Proje kök dizinini belirle
 PROJECT_ROOT = Path(__file__).parent.parent
-DB_FILE = PROJECT_ROOT / "kognita_data.db" # Tekrar standart .db dosyasına dönüyoruz
+DB_FILE = PROJECT_ROOT / "kognita_data.db"
 
 # --- YENİ: Veri Şifreleme Mantığı ---
 def get_encryption_key():
@@ -63,13 +63,12 @@ def get_db_connection():
         return None
 
 def initialize_database():
-    """Tüm tabloları oluşturur. Artık şifreleme katmanı burada değil."""
+    """Tüm tabloları oluşturur."""
     is_new_db = not DB_FILE.exists()
     try:
         with get_db_connection() as conn:
             if conn is None: return
             cursor = conn.cursor()
-            # Şifrelenmiş veriyi saklamak için TEXT yerine BLOB kullanacağız.
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS usage_log (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -80,15 +79,29 @@ def initialize_database():
                     process_name TEXT PRIMARY KEY,
                     category TEXT NOT NULL
                 )""")
-            # Diğer tablolar şifreleme gerektirmediği için aynı kalabilir.
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS goals (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    category TEXT NOT NULL,
-                    goal_type TEXT NOT NULL,
-                    time_limit_minutes INTEGER NOT NULL,
-                    UNIQUE(category, goal_type)
+                    category TEXT, 
+                    process_name TEXT, 
+                    goal_type TEXT NOT NULL, 
+                    time_limit_minutes INTEGER, 
+                    start_time_of_day TEXT, 
+                    end_time_of_day TEXT,   
+                    UNIQUE(category, goal_type, process_name, start_time_of_day, end_time_of_day) -- Daha spesifik UNIQUE constraint
                 )""")
+            
+            # Goals tablosuna sütun eklemeleri (Eğer daha önceki versiyondan geçiş yapılıyorsa)
+            cursor.execute("PRAGMA table_info(goals)")
+            columns = [col[1] for col in cursor.fetchall()]
+            if 'process_name' not in columns:
+                cursor.execute("ALTER TABLE goals ADD COLUMN process_name TEXT")
+            if 'start_time_of_day' not in columns:
+                cursor.execute("ALTER TABLE goals ADD COLUMN start_time_of_day TEXT")
+            if 'end_time_of_day' not in columns:
+                cursor.execute("ALTER TABLE goals ADD COLUMN end_time_of_day TEXT")
+
+
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS achievements (
                     achievement_id TEXT PRIMARY KEY,
@@ -96,6 +109,15 @@ def initialize_database():
                     description TEXT NOT NULL,
                     icon_path TEXT,
                     unlocked_at INTEGER NOT NULL
+                )""")
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS notifications (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp INTEGER NOT NULL,
+                    title TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    type TEXT,
+                    is_read INTEGER DEFAULT 0
                 )""")
             conn.commit()
 
@@ -107,7 +129,7 @@ def initialize_database():
         logging.critical(f"Database initialization failed: {e}", exc_info=True)
 
 
-# --- YENİ: ŞİFRELİ VERİ İŞLEME FONKSİYONLARI ---
+# --- YENİ: Veri Şifreleme Fonksiyonları ---
 def add_usage_log(process_name, window_title, start_time, end_time, duration):
     """Kullanım verisini şifreleyerek veritabanına ekler."""
     log_data = {
@@ -137,10 +159,135 @@ def get_all_usage_logs():
                 logging.error(f"Bir log verisi çözülemedi veya parse edilemedi: {e}")
         return logs
 
-# --- Mevcut Fonksiyonların Yeni Şifreleme Düzenine Uyarlanması ---
+def delete_old_usage_logs(days_to_keep):
+    """Belirtilen gün sayısından daha eski kullanım loglarını siler."""
+    if days_to_keep < 0: # Negatif değer, veriyi saklama anlamına gelir.
+        return 0 # Silme işlemi yapma
+
+    cutoff_timestamp = int((datetime.datetime.now() - datetime.timedelta(days=days_to_keep)).timestamp())
+    
+    # Tüm logları çözüp filtreleyerek silinecek olanların ID'lerini bul.
+    # encryption nedeniyle SQL sorgusuyla direkt 'start_time' üzerinde WHERE koşulu uygulayamayız.
+    # Bu, büyük log dosyalarında performans sorunu yaratabilir, ancak veri güvenliği önceliği nedeniyle bu yaklaşım seçildi.
+    all_logs = get_all_usage_logs()
+    ids_to_delete = []
+    for log in all_logs:
+        if log.get('start_time', 0) < cutoff_timestamp:
+            # log objesinin bir 'id' alanı yok, bu bir sorun.
+            # usage_log tablosunda id'yi çekmemiz gerekiyor.
+            # Geçici olarak tüm logları çekip silmek yerine,
+            # direkt SQL sorgusunu usage_log'daki 'id' ile yapmalıyız.
+            # Ancak encrypted_data BLOB olduğu için start_time'a erişilemez.
+            # BU KRİTİK BİR TASARIM TERCİHİ: Şifreleme, veritabanı seviyesinde filtrelemeyi engeller.
+            # O YÜZDEN SİLME İŞLEMİ ZORLAŞIYOR.
+            # Alternatif: Her encrypted_data blob'unda id veya timestamp'i de tutmak.
+            # Şu anki yapıda bu imkansız.
+            # Bu, şifreleme tasarımının bir limitasyonu. Eğer çok büyük veri olacaksa,
+            # timestamp gibi filtreleme alanları şifrelenmeden tutulmalı.
+            
+            # Mevcut yapıyla yapılabilecek tek şey, tüm logları çekip Python'da filtreleyip
+            # sonra tek tek ID'lerine göre silmek. Bu da çok yavaş olabilir.
+            # VEYA: `usage_log` tablosuna şifrelenmemiş `timestamp` sütunu ekle!
+            
+            # Düzeltme: usage_log tablosuna şifrelenmemiş timestamp sütunu ekleyelim.
+            # initialize_database'da güncelleme yapılmalı.
+            pass # Şimdilik pas geçiyoruz, initialize_database'de düzeltme gerekecek.
+            
+    # initialize_database'da usage_log tablosu ALTER TABLE ile güncellenmeli:
+    # ALTER TABLE usage_log ADD COLUMN timestamp INTEGER;
+    # Daha sonra add_usage_log'da da bu timestamp alanı güncellenmeli.
+    
+    # Şimdilik, şifrelenmiş veriyi direkt kullanamadığımız için, sadece mantıksal bir yer tutucu bırakıyoruz.
+    # Gerçek uygulamada bu çok önemli bir karardır.
+    
+    # Hızlı düzeltme için, timestamp'i log data içinde tuttuğumuz için,
+    # şifrelenmiş verinin kendisini silmek için ID'ye ihtiyacımız var.
+    # Logların ID'leri olmadan bu fonksiyon çalışmaz.
+    # get_all_usage_logs() fonksiyonu ID döndürmüyor.
+    # Database'den sadece encrypted_data çekiyoruz. ID'yi de çekmeliyiz.
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        # ID'yi de çekmeliyiz
+        cursor.execute("SELECT id, encrypted_data FROM usage_log")
+        logs_with_id = []
+        for row_id, encrypted_data in cursor.fetchall():
+            try:
+                decrypted_str = decrypt_data(encrypted_data)
+                log_data = json.loads(decrypted_str)
+                log_data['id'] = row_id # ID'yi log verisine ekle
+                logs_with_id.append(log_data)
+            except (json.JSONDecodeError, UnicodeDecodeError) as e:
+                logging.error(f"Bir log verisi çözülemedi veya parse edilemedi: {e}")
+
+        ids_to_delete = []
+        for log in logs_with_id:
+            if log.get('start_time', 0) < cutoff_timestamp:
+                ids_to_delete.append(log['id'])
+        
+        if ids_to_delete:
+            placeholders = ','.join('?' * len(ids_to_delete))
+            cursor.execute(f"DELETE FROM usage_log WHERE id IN ({placeholders})", ids_to_delete)
+            conn.commit()
+            logging.info(f"{len(ids_to_delete)} adet eski kullanım logu silindi (tarih öncesi: {datetime.datetime.fromtimestamp(cutoff_timestamp).strftime('%Y-%m-%d %H:%M:%S')}).")
+            return len(ids_to_delete)
+        else:
+            logging.info("Silinecek eski kullanım logu bulunamadı.")
+            return 0
+
+
+# --- Yeni Bildirim Fonksiyonları ---
+def add_notification(title, message, notification_type="info"):
+    """Bildirimi veritabanına kaydeder."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        timestamp = int(datetime.datetime.now().timestamp())
+        cursor.execute(
+            "INSERT INTO notifications (timestamp, title, message, type) VALUES (?, ?, ?, ?)",
+            (timestamp, title, message, notification_type)
+        )
+        conn.commit()
+        logging.info(f"Bildirim veritabanına eklendi: {title} - {message}")
+
+def get_all_notifications():
+    """Tüm bildirimleri veritabanından getirir."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, timestamp, title, message, type, is_read FROM notifications ORDER BY timestamp DESC")
+        return [{
+            "id": row[0],
+            "timestamp": row[1],
+            "title": row[2],
+            "message": row[3],
+            "type": row[4],
+            "is_read": bool(row[5])
+        } for row in cursor.fetchall()]
+
+def mark_notification_as_read(notification_id):
+    """Belirli bir bildirimi okundu olarak işaretler."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE notifications SET is_read = 1 WHERE id = ?", (notification_id,))
+        conn.commit()
+
+def delete_notification(notification_id):
+    """Belirli bir bildirimi siler."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM notifications WHERE id = ?", (notification_id,))
+        conn.commit()
+
+def get_unread_notification_count():
+    """Okunmamış bildirim sayısını döndürür."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM notifications WHERE is_read = 0")
+        return cursor.fetchone()[0]
+
+
+# --- Mevcut Fonksiyonların Yeni Düzenlemelere Uyarlanması ---
 
 def _populate_initial_categories(conn):
-    # Bu fonksiyonun mantığı aynı kalır.
     categories = {
         "winword.exe": "Office", "excel.exe": "Office", "powerpnt.exe": "Office",
         "outlook.exe": "Communication", "slack.exe": "Communication", "teams.exe": "Communication",
@@ -169,8 +316,14 @@ def get_all_categories():
         cursor.execute("SELECT DISTINCT category FROM app_categories ORDER BY category")
         return [item[0] for item in cursor.fetchall()]
 
+def get_all_processes():
+    """Tüm loglanmış (idle ve unknown olmayan) process isimlerini döner."""
+    all_logs = get_all_usage_logs()
+    processes = {log['process_name'] for log in all_logs if log['process_name'] not in ('idle', 'unknown')}
+    return sorted(list(processes))
+
 def get_uncategorized_apps():
-    """Bu fonksiyon artık logları çözerek çalışmalı."""
+    """Uygulama kullanım loglarından kategorize edilmemiş uygulamaları getirir."""
     all_logs = get_all_usage_logs()
     logged_processes = {log['process_name'] for log in all_logs if log['process_name'] not in ('idle', 'unknown')}
     
@@ -197,19 +350,35 @@ def get_category_for_process(process_name):
         result = cursor.fetchone()
         return result[0] if result else 'Other'
 
+
+def add_goal(category=None, process_name=None, goal_type=None, time_limit_minutes=None, start_time_of_day=None, end_time_of_day=None):
+    """
+    Hedef ekler veya günceller. Daha esnek parametreler alır.
+    category veya process_name dolu olmalı. time_limit_minutes, start_time_of_day, end_time_of_day goal_type'a göre değişir.
+    """
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT OR REPLACE INTO goals 
+            (category, process_name, goal_type, time_limit_minutes, start_time_of_day, end_time_of_day) 
+            VALUES (?, ?, ?, ?, ?, ?)""",
+            (category, process_name, goal_type.lower(), time_limit_minutes, start_time_of_day, end_time_of_day))
+        conn.commit()
+        logging.info(f"Goal added/updated: Type={goal_type}, Category={category}, Process={process_name}")
+
 def get_goals():
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, category, goal_type, time_limit_minutes FROM goals ORDER BY category")
-        return cursor.fetchall()
-
-def add_goal(category, goal_type, time_limit):
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("INSERT OR REPLACE INTO goals (category, goal_type, time_limit_minutes) VALUES (?, ?, ?)",
-                       (category, goal_type.lower(), time_limit))
-        conn.commit()
-        logging.info(f"Goal added/updated for category '{category}'.")
+        cursor.execute("SELECT id, category, process_name, goal_type, time_limit_minutes, start_time_of_day, end_time_of_day FROM goals ORDER BY category, process_name")
+        return [{
+            "id": row[0],
+            "category": row[1],
+            "process_name": row[2],
+            "goal_type": row[3],
+            "time_limit_minutes": row[4],
+            "start_time_of_day": row[5],
+            "end_time_of_day": row[6]
+        } for row in cursor.fetchall()]
 
 def delete_goal(goal_id):
     with get_db_connection() as conn:
@@ -233,6 +402,7 @@ def unlock_achievement(ach_id, name, description, icon_path):
             (ach_id, name, description, icon_path, timestamp)
         )
         conn.commit()
+        add_notification(f"🏆 Yeni Başarım: {name}", description, "achievement")
 
 def get_all_unlocked_achievements():
     with get_db_connection() as conn:
@@ -245,7 +415,8 @@ def export_all_data_to_csv(file_path):
     try:
         all_logs = get_all_usage_logs()
         if not all_logs:
-            return True, None # Dışa aktarılacak veri yok
+            logging.info("Dışa aktarılacak log verisi bulunamadı.")
+            return True, None
 
         headers = ["process_name", "window_title", "start_time_str", "end_time_str", "duration_seconds"]
         
@@ -256,9 +427,9 @@ def export_all_data_to_csv(file_path):
                 writer.writerow([
                     log.get("process_name"),
                     log.get("window_title"),
-                    datetime.datetime.fromtimestamp(log.get("start_time")).strftime('%Y-%m-%d %H:%M:%S'),
-                    datetime.datetime.fromtimestamp(log.get("end_time")).strftime('%Y-%m-%d %H:%M:%S'),
-                    log.get("duration_seconds")
+                    datetime.datetime.fromtimestamp(log.get("start_time", 0)).strftime('%Y-%m-%d %H:%M:%S') if log.get("start_time") else '',
+                    datetime.datetime.fromtimestamp(log.get("end_time", 0)).strftime('%Y-%m-%d %H:%M:%S') if log.get("end_time") else '',
+                    log.get("duration_seconds", 0)
                 ])
         return True, None
     except Exception as e:

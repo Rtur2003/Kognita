@@ -20,7 +20,16 @@ class ConfigManager:
         return {
             "settings": {
                 "idle_threshold_seconds": 180,
-                "language": "tr" 
+                "language": "tr",
+                "notification_settings": {
+                    "enable_goal_notifications": True,
+                    "enable_focus_notifications": True,
+                    "focus_notification_frequency_seconds": 300,
+                    "show_achievement_notifications": True
+                },
+                "run_on_startup": False,
+                "enable_sentry_reporting": True,
+                "data_retention_days": 365
             },
             "app_state": {
                 "first_run": True
@@ -37,10 +46,26 @@ class ConfigManager:
         
         try:
             with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except (json.JSONDecodeError, FileNotFoundError):
-            logging.error(f"'{CONFIG_FILE}' okunamadı veya bozuk. Varsayılan yapılandırma kullanılıyor.")
-            return self._get_default_config()
+                loaded_config = json.load(f)
+            
+            # Yüklenen konfigürasyonu varsayılan ile birleştir (yeni eklenen ayarlar için)
+            default_config = self._get_default_config()
+            for key, value in default_config.items():
+                if key not in loaded_config:
+                    loaded_config[key] = value
+                elif isinstance(value, dict) and isinstance(loaded_config[key], dict):
+                    # Nested dict'ler için de varsayılanları ekle
+                    for sub_key, sub_value in value.items():
+                        if sub_key not in loaded_config[key]:
+                            loaded_config[key][sub_key] = sub_value
+            
+            return loaded_config
+
+        except (json.JSONDecodeError, FileNotFoundError) as e:
+            logging.error(f"'{CONFIG_FILE}' okunamadı veya bozuk ({e}). Varsayılan yapılandırma kullanılıyor.")
+            config = self._get_default_config()
+            self.save(config)
+            return config
 
     def save(self, config_data=None):
         """Mevcut yapılandırmayı dosyaya kaydeder."""
@@ -53,14 +78,25 @@ class ConfigManager:
 
     def get(self, key, default=None):
         """Anahtar-değer çiftiyle yapılandırma verisi alır."""
-        return self._config.get(key, default)
-
-    def set(self, key, value):
-        """Bir yapılandırma anahtarını ayarlar ve kaydeder."""
         # Dotted notation desteği için (örn: "settings.idle_threshold_seconds")
         keys = key.split('.')
         d = self._config
-        for k in keys[:-1]:
-            d = d.setdefault(k, {})
-        d[keys[-1]] = value
+        for k in keys:
+            if isinstance(d, dict):
+                d = d.get(k)
+            else:
+                return default # Yol bulunamadı
+        return d if d is not None else default # None ise default dön
+
+    def set(self, key, value):
+        """Bir yapılandırma anahtarını ayarlar ve kaydeder."""
+        keys = key.split('.')
+        d = self._config
+        for k_index, k in enumerate(keys):
+            if k_index == len(keys) - 1: # Son anahtar
+                d[k] = value
+            else:
+                if k not in d or not isinstance(d[k], dict):
+                    d[k] = {} # Yoksa veya dict değilse oluştur
+                d = d[k]
         self.save()
