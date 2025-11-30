@@ -111,7 +111,7 @@ def create_pdf_report(file_path, start_date, end_date):
 
         # Başlık
         report_title = f"Kognita Dijital Ayak İzi Raporu\n{start_date.strftime('%Y-%m-%d %H:%M')} - {end_date.strftime('%Y-%m-%d %H:%M')}"
-        story.append(Paragraph(report_title, styles['h1']))
+        story.append(Paragraph(report_title, styles['Heading1']))
         story.append(Spacer(1, 0.2 * inch))
 
         category_totals, total_duration = analyzer.get_analysis_data(start_date, end_date)
