@@ -59,7 +59,21 @@
     "tray_categories": "Manage Categories",
     "tray_achievements": "Achievements",
     "tray_settings": "Settings",
+    "tray_start_focus": "Start Focus Session",
+    "tray_stop_focus": "Stop Focus Session",
     "tray_exit": "Exit",
     "goal_exceeded_title": "Goal Exceeded!",
-    "goal_exceeded_message": "You have exceeded your daily limit of {limit} min for the '{category}' category."
+    "goal_exceeded_message": "You have exceeded your daily limit of {limit} min for the '{category}' category.",
+    "goal_achieved_title": "Goal Achieved!",
+    "goal_achieved_message": "You reached your daily target of {limit} min for the '{category}' category.",
+    "blocked_app_title": "App Blocked",
+    "blocked_app_message": "The app '{app}' is blocked during this period.",
+    "focus_active_title": "Focus Session Active",
+    "focus_active_message": "There is already an active focus session.",
+    "focus_started_title": "Focus Started",
+    "focus_started_message": "Focus session started for {duration} minutes.",
+    "focus_distraction_title": "Stay Focused",
+    "focus_distraction_message": "You opened {app}, which is outside the allowed categories.",
+    "focus_ended_title": "Focus Ended",
+    "focus_ended_message": "Your {duration}-minute focus session is over."
 }
