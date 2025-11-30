@@ -21,7 +21,7 @@ try:
     from Cryptodome.Util.Padding import pad, unpad
     CRYPTO_AVAILABLE = True
 except ImportError:
-    logging.warning("PyCryptodome modülü bulunamadı. Şifreleme devre dışı.")
+    logging.warning("PyCryptodomeX modülü bulunamadı. Şifreleme devre dışı.")
     CRYPTO_AVAILABLE = False
 
 # Proje kök dizinini belirle
