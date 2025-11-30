@@ -30,6 +30,7 @@ class KognitaApp:
         self.stop_event = Event()
         self.focus_session_active = False
         self.dashboard_window = None
+        self.last_block_notification_times = {}
 
         # Veritabanını ilk başlatma
         try:
