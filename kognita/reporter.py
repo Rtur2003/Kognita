@@ -122,13 +122,13 @@ def create_pdf_report(file_path, start_date, end_date):
             return True, None
 
         # Toplam Süre ve Persona
-        story.append(Paragraph(f"Toplam Aktif Süre: {format_duration(total_duration)}", styles['h2']))
+        story.append(Paragraph(f"Toplam Aktif Süre: {format_duration(total_duration)}", styles['Heading2']))
         persona_text, _ = get_report_data(category_totals, total_duration)
-        story.append(Paragraph(persona_text, styles['h3']))
+        story.append(Paragraph(persona_text, styles['Heading3']))
         story.append(Spacer(1, 0.2 * inch))
 
         # Kategori Detayları Tablosu
-        story.append(Paragraph("Kategori Kullanım Detayları:", styles['h2']))
+        story.append(Paragraph("Kategori Kullanım Detayları:", styles['Heading2']))
         table_data = [["Kategori", "Harcanan Süre", "Yüzde"]]
         
         sorted_categories = sorted(category_totals.items(), key=lambda item: item[1], reverse=True)
@@ -159,11 +159,11 @@ def create_pdf_report(file_path, start_date, end_date):
         story.append(Spacer(1, 0.5 * inch))
 
         # Diğer Analizler
-        story.append(Paragraph("Diğer Analizler:", styles['h2']))
+        story.append(Paragraph("Diğer Analizler:", styles['Heading2']))
 
         # Günlük Ortalama Kullanım
         daily_avg_data = analyzer.get_daily_average_usage_by_category(num_days=7)
-        story.append(Paragraph("Son 7 Günlük Kategori Ortalama Kullanım:", styles['h3']))
+        story.append(Paragraph("Son 7 Günlük Kategori Ortalama Kullanım:", styles['Heading3']))
         if daily_avg_data:
             daily_avg_table_data = [["Kategori", "Günlük Ortalama Süre"]]
             sorted_data = sorted(daily_avg_data.items(), key=lambda item: item[1], reverse=True)
@@ -187,7 +187,7 @@ def create_pdf_report(file_path, start_date, end_date):
 
         # En Verimli Gün
         most_productive_day, max_time = analyzer.get_most_productive_day()
-        story.append(Paragraph("En Verimli Gün (Son 30 Gün):", styles['h3']))
+        story.append(Paragraph("En Verimli Gün (Son 30 Gün):", styles['Heading3']))
         if most_productive_day != "Yeterli Veri Yok":
             story.append(Paragraph(f"En verimli gününüz: {most_productive_day} (Toplam verimli süre: {format_duration(max_time)})", styles['Normal']))
         else:
@@ -196,7 +196,7 @@ def create_pdf_report(file_path, start_date, end_date):
 
         # Kullanım Önerileri
         suggestions = analyzer.get_user_suggestions(category_totals, total_duration)
-        story.append(Paragraph("Kişiselleştirilmiş Öneriler:", styles['h2']))
+        story.append(Paragraph("Kişiselleştirilmiş Öneriler:", styles['Heading2']))
         for suggestion in suggestions:
             story.append(Paragraph(f"• {suggestion}", styles['Normal']))
             story.append(Spacer(1, 0.1 * inch))
