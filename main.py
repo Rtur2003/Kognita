@@ -206,6 +206,8 @@ class KognitaApp:
                     category = goal.get('category')
                     process_name_target = goal.get('process_name')
                     time_limit_min = goal.get('time_limit_minutes')
+                    start_time_str = goal.get('start_time_of_day')
+                    end_time_str = goal.get('end_time_of_day')
 
                     if goal_type == 'max_usage' and category and time_limit_min is not None:
                         usage_minutes = category_totals_today.get(category, 0) / 60
@@ -227,14 +229,38 @@ class KognitaApp:
                             )
                             checked_goals_today.add(goal_id)
 
+                    elif goal_type == 'time_window_max' and category and time_limit_min is not None and start_time_str and end_time_str:
+                        try:
+                            start_hour, start_minute = [int(x) for x in start_time_str.split(":")]
+                            end_hour, end_minute = [int(x) for x in end_time_str.split(":")]
+                            window_start = now.replace(hour=start_hour, minute=start_minute, second=0, microsecond=0)
+                            window_end = now.replace(hour=end_hour, minute=end_minute, second=0, microsecond=0)
+
+                            if window_start <= now <= window_end:
+                                window_totals, _ = analyzer.get_analysis_data(window_start, now)
+                                usage_minutes = window_totals.get(category, 0) / 60
+                                if usage_minutes > time_limit_min:
+                                    self.show_notification(
+                                        loc.get('goal_exceeded_title'), 
+                                        loc.get('goal_exceeded_message', category=category, limit=time_limit_min),
+                                        notification_type="goal_exceeded"
+                                    )
+                                    checked_goals_today.add(goal_id)
+                        except Exception as inner_error:
+                            logging.error(f"Zaman aralığı hedefi kontrolünde hata: {inner_error}")
+
                     elif goal_type == 'block' and process_name_target:
                         if current_process_name and current_process_name.lower() == process_name_target.lower():
-                            self.show_notification(
-                                loc.get('blocked_app_title'), 
-                                loc.get('blocked_app_message', app=process_name_target), 
-                                timeout=5, 
-                                notification_type="goal_block"
-                            )
+                            now_ts = time.time()
+                            last_sent = self.last_block_notification_times.get(process_name_target.lower(), 0)
+                            if now_ts - last_sent >= 300:
+                                self.show_notification(
+                                    loc.get('blocked_app_title'), 
+                                    loc.get('blocked_app_message', app=process_name_target), 
+                                    timeout=5, 
+                                    notification_type="goal_block"
+                                )
+                                self.last_block_notification_times[process_name_target.lower()] = now_ts
 
             except Exception as e:
                 logging.error(f"Hedef kontrol döngüsünde hata: {e}")
