@@ -17,8 +17,8 @@ except ImportError:
     WMI_AVAILABLE = False
 
 try:
-    from Crypto.Cipher import AES
-    from Crypto.Util.Padding import pad, unpad
+    from Cryptodome.Cipher import AES
+    from Cryptodome.Util.Padding import pad, unpad
     CRYPTO_AVAILABLE = True
 except ImportError:
     logging.warning("PyCryptodome modülü bulunamadı. Şifreleme devre dışı.")
