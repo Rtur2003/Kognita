@@ -34,5 +34,17 @@
     "goal_exceeded_title": "Hedef Aşıldı!",
     "goal_exceeded_message": "'{category}' kategorisi için günlük {limit} dk limitinizi aştınız.",
     "achievement_unlocked_title": "🏆 Yeni Başarım: {title}",
-    "achievement_unlocked_message": "{description}"
+    "achievement_unlocked_message": "{description}",
+    "goal_achieved_title": "Hedef TamamlandŽñ!",
+    "goal_achieved_message": "'{category}' kategorisi iÇõin {limit} dk hedefinize ulaYtŽñnŽñz.",
+    "blocked_app_title": "Uygulama Engellendi",
+    "blocked_app_message": "'{app}' uygulamasŽñ bu sÇ¬rada engellendi.",
+    "focus_active_title": "Odak Oturumu Aktif",
+    "focus_active_message": "Zaten devam eden bir odaklanma oturumu var.",
+    "focus_started_title": "Odaklanma Oturumu BaYladŽñ",
+    "focus_started_message": "{duration} dakikalŽñk odaklanma oturumu baYladŽñ.",
+    "focus_distraction_title": "Odaklanmaya Devam",
+    "focus_distraction_message": "Žøzin verilen kategoriler dŽñYŽñnda: {app}.",
+    "focus_ended_title": "Odak Oturumu Bitti",
+    "focus_ended_message": "{duration} dakikalŽñk odaklanma oturumu sona erdi."
 }
