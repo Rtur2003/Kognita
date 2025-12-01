@@ -55,6 +55,7 @@ Kognita is a silent, local-first desktop activity tracker that helps you underst
 - Sentry error reporting is **off by default**. To enable it, set `settings.enable_sentry_reporting` to `true` in `config.json` and provide `SENTRY_DSN` (and optional `SENTRY_TRACES_SAMPLE_RATE` / `SENTRY_PROFILES_SAMPLE_RATE`).
 - Logs are written to `%APPDATA%\Kognita\logs\kognita.log` with rotation plus stdout so you can debug issues without leaving a terminal open.
 - Set `KOGNITA_LOG_LEVEL=DEBUG` for verbose troubleshooting output.
+- Settings → Hakkinda tab shows the current log path, telemetry state, and config file location.
 
 ## UI Showcase
 

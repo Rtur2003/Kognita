@@ -1600,6 +1600,7 @@ class SettingsWindow(BaseWindow):
         version = getattr(self.app_instance, "app_version", "1.0.0") if self.app_instance else "1.0.0"
         log_path = getattr(self.app_instance, "log_file_path", None)
         log_value = str(log_path) if log_path else "stdout (dosya yok)"
+        log_level = os.environ.get("KOGNITA_LOG_LEVEL", "INFO").upper()
 
         sentry_on = False
         sentry_reason = "Kapali"
@@ -1619,8 +1620,9 @@ class SettingsWindow(BaseWindow):
 
         add_row("Surum", version, 0)
         add_row("Log dosyasi", log_value, 1)
-        add_row("Sentry", sentry_reason, 2)
-        add_row("Config dosyasi", config_path, 3)
+        add_row("Log seviyesi", log_level, 2)
+        add_row("Sentry", sentry_reason, 3)
+        add_row("Config dosyasi", config_path, 4)
 
 
     def _load_settings(self):
