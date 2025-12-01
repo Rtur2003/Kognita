@@ -28,7 +28,7 @@ class ConfigManager:
                     "show_achievement_notifications": True
                 },
                 "run_on_startup": False,
-                "enable_sentry_reporting": True,
+                "enable_sentry_reporting": False,
                 "data_retention_days": 365
             },
             "app_state": {

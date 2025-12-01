@@ -9,7 +9,7 @@
             "focus_notification_frequency_seconds": 300
         },
         "run_on_startup": false,
-        "enable_sentry_reporting": true,
+        "enable_sentry_reporting": false,
         "data_retention_days": 365
     },
     "app_state": {

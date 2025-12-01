@@ -13,7 +13,8 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg 
 
 # Yerel modülleri içe aktar
-from . import analyzer, database, reporter 
+from . import analyzer, database, reporter
+from .config_manager import CONFIG_FILE
 
 # Matplotlib kontrolü
 MATPLOTLIB_AVAILABLE = True

@@ -1,4 +1,4 @@
-# main.py (Hata Düzeltmeleri Yapılmış Hali)
+# main.py
 
 import datetime
 import pystray
@@ -10,7 +10,9 @@ import logging
 import time
 import os 
 import winreg 
-import sentry_sdk 
+import sentry_sdk
+from pathlib import Path
+from logging.handlers import RotatingFileHandler
 
 # YENİ: Dil yöneticisi en başta import edilmeli
 from kognita.localization import loc
@@ -18,13 +20,18 @@ from kognita import tracker, database, analyzer, ui, achievement_checker
 from kognita.config_manager import ConfigManager
 from kognita.utils import resource_path
 
+APP_VERSION = "1.0.0"
+
 class KognitaApp:
     def __init__(self):
         self.root = tk.Tk()
         self.root.withdraw()
 
+        self.app_version = APP_VERSION
+        self.log_file_path = None
         self.setup_logging()
         self.config_manager = ConfigManager()
+        self._install_exception_hook()
         self._setup_sentry() 
         
         self.stop_event = Event()
@@ -46,28 +53,68 @@ class KognitaApp:
     def setup_logging(self):
         """Uygulama genelinde merkezi loglama sistemini kurar."""
         log_format = '%(asctime)s - %(levelname)s - %(module)s - %(message)s'
-        logging.basicConfig(level=logging.INFO, format=log_format, stream=sys.stdout)
+        level_name = os.environ.get('KOGNITA_LOG_LEVEL', 'INFO').upper()
+        log_level = getattr(logging, level_name, logging.INFO)
+        handlers = [logging.StreamHandler(sys.stdout)]
+
+        try:
+            logs_dir = Path(os.environ.get('APPDATA', Path.home())) / 'Kognita' / 'logs'
+            logs_dir.mkdir(parents=True, exist_ok=True)
+            self.log_file_path = logs_dir / 'kognita.log'
+            handlers.append(RotatingFileHandler(self.log_file_path, maxBytes=1_000_000, backupCount=3, encoding='utf-8'))
+        except Exception as log_error:
+            self.log_file_path = None
+            logging.basicConfig(level=log_level, format=log_format, stream=sys.stdout)
+            logging.warning(f"Log dosyasi olusturulamadi, yalnizca stdout kullanilacak: {log_error}")
+            return
+
+        logging.basicConfig(level=log_level, format=log_format, handlers=handlers)
+        if self.log_file_path:
+            logging.info(f"Loglar '{self.log_file_path}' konumuna yaziliyor.")
 
     def _setup_sentry(self):
         """Sentry hata raporlama entegrasyonunu kurar."""
-        if self.config_manager.get('settings.enable_sentry_reporting', False):  # Default False yaptık
-            sentry_dsn = os.environ.get("SENTRY_DSN") 
-            if not sentry_dsn:
-                logging.info("SENTRY_DSN ortam değişkeni ayarlanmamış. Hata raporlama atlanıyor.")
-                return
+        if not self.config_manager.get('settings.enable_sentry_reporting', False):
+            logging.info("Sentry hata raporlama devre disi (config ayari).")
+            return
 
-            try:
-                sentry_sdk.init(
-                    dsn=sentry_dsn,
-                    traces_sample_rate=1.0,
-                    release="kognita@1.0.0", 
-                    environment="production", 
-                )
-                logging.info("Sentry hata raporlama etkinleştirildi.")
-            except Exception as e:
-                logging.error(f"Sentry başlatılırken hata oluştu: {e}")
-        else:
-            logging.info("Sentry hata raporlama devre dışı.")
+        sentry_dsn = os.environ.get('SENTRY_DSN')
+        if not sentry_dsn:
+            logging.info("SENTRY_DSN ortam degiskeni ayarlanmamis. Hata raporlama atlanacak.")
+            return
+
+        try:
+            traces_rate = float(os.environ.get('SENTRY_TRACES_SAMPLE_RATE', '0.05'))
+            profiles_rate = float(os.environ.get('SENTRY_PROFILES_SAMPLE_RATE', '0.0'))
+        except ValueError:
+            traces_rate, profiles_rate = 0.05, 0.0
+
+        try:
+            sentry_sdk.init(
+                dsn=sentry_dsn,
+                traces_sample_rate=traces_rate,
+                profiles_sample_rate=profiles_rate,
+                release=f"kognita@{APP_VERSION}",
+                environment=os.environ.get('SENTRY_ENVIRONMENT', 'production'),
+            )
+            logging.info("Sentry hata raporlama etkinlestirildi.")
+        except Exception as e:
+            logging.error(f"Sentry baslatilirken hata olustu: {e}")
+
+    def _install_exception_hook(self):
+        """Yakalanmayan hatalari log dosyasina yazmak icin kancayi kurar."""
+        def _handle_exception(exc_type, exc_value, exc_traceback):
+            if issubclass(exc_type, KeyboardInterrupt):
+                sys.__excepthook__(exc_type, exc_value, exc_traceback)
+                return
+            logging.critical("Yakalanmayan hata olustu", exc_info=(exc_type, exc_value, exc_traceback))
+            if self.config_manager.get('settings.enable_sentry_reporting', False):
+                try:
+                    sentry_sdk.capture_exception(exc_value)
+                except Exception:
+                    pass
+
+        sys.excepthook = _handle_exception
 
     def show_dashboard(self):
         """Ana dashboard penceresini gösterir."""
