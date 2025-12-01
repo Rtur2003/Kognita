@@ -1414,25 +1414,30 @@ class SettingsWindow(BaseWindow):
         ])
 
     def _create_settings_interface(self):
-        """Ayarlar arayüzü."""
+        """Ayarlar arayuzu."""
         # Ayarlar notebook
         settings_notebook = ttk.Notebook(self.content_frame)
         settings_notebook.pack(fill='both', expand=True)
         
         # Genel Ayarlar
         general_frame = ttk.Frame(settings_notebook, style='TFrame')
-        settings_notebook.add(general_frame, text="⚙️ Genel")
+        settings_notebook.add(general_frame, text="Genel")
         self._create_general_settings(general_frame)
         
-        # Bildirim Ayarları
+        # Bildirim Ayarlari
         notifications_frame = ttk.Frame(settings_notebook, style='TFrame')
-        settings_notebook.add(notifications_frame, text="🔔 Bildirimler")
+        settings_notebook.add(notifications_frame, text="Bildirimler")
         self._create_notification_settings(notifications_frame)
         
-        # Gelişmiş Ayarlar
+        # Gelismis Ayarlar
         advanced_frame = ttk.Frame(settings_notebook, style='TFrame')
-        settings_notebook.add(advanced_frame, text="🔧 Gelişmiş")
+        settings_notebook.add(advanced_frame, text="Gelismis")
         self._create_advanced_settings(advanced_frame)
+
+        # Hakkinda
+        about_frame = ttk.Frame(settings_notebook, style='TFrame')
+        settings_notebook.add(about_frame, text="Hakkinda")
+        self._create_about_tab(about_frame)
 
     def _create_general_settings(self, parent):
         """Genel ayarlar sekmesi."""
@@ -1577,6 +1582,46 @@ class SettingsWindow(BaseWindow):
         
         ttk.Button(update_content, text="Güncellemeleri Kontrol Et",
                   command=self._check_updates).pack(anchor='w')
+
+    def _create_about_tab(self, parent):
+        """Hakkinda sekmesi."""
+        content = ttk.Frame(parent, style='TFrame')
+        content.pack(fill='both', expand=True, padx=20, pady=20)
+
+        ttk.Label(content, text="Uygulama Bilgisi", font=STYLE_CONFIG["font_h2"]).pack(anchor='w', pady=(0, 20))
+
+        info_frame = ttk.Frame(content, style='TFrame')
+        info_frame.pack(fill='x', padx=4)
+
+        def add_row(label, value, row):
+            ttk.Label(info_frame, text=label, font=STYLE_CONFIG["font_bold"]).grid(row=row, column=0, sticky='w', padx=(0, 12), pady=6)
+            ttk.Label(info_frame, text=value, font=STYLE_CONFIG["font_normal"], foreground=STYLE_CONFIG["text_secondary"]).grid(row=row, column=1, sticky='w', pady=6)
+
+        version = getattr(self.app_instance, "app_version", "1.0.0") if self.app_instance else "1.0.0"
+        log_path = getattr(self.app_instance, "log_file_path", None)
+        log_value = str(log_path) if log_path else "stdout (dosya yok)"
+
+        sentry_on = False
+        sentry_reason = "Kapali"
+        if self.app_instance and getattr(self.app_instance, "config_manager", None):
+            cfg = self.app_instance.config_manager
+            cfg_enabled = bool(cfg.get('settings.enable_sentry_reporting', False))
+            dsn_present = bool(os.environ.get('SENTRY_DSN'))
+            sentry_on = cfg_enabled and dsn_present
+            if sentry_on:
+                sentry_reason = "Acik (config + DSN)"
+            elif cfg_enabled and not dsn_present:
+                sentry_reason = "Kapali (DSN eksik)"
+            else:
+                sentry_reason = "Kapali (config)"
+
+        config_path = str(CONFIG_FILE)
+
+        add_row("Surum", version, 0)
+        add_row("Log dosyasi", log_value, 1)
+        add_row("Sentry", sentry_reason, 2)
+        add_row("Config dosyasi", config_path, 3)
+
 
     def _load_settings(self):
         """Mevcut ayarları yükler."""
